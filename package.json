@@ -1,0 +1,8 @@
+{
+  "name": "holdem-trainer",
+  "version": "1.0.0",
+  "description": "텍사스 홀덤 학습용 로컬 게임",
+  "main": "main.js",
+  "scripts": { "start": "electron .", "test": "node test-engine.js && node test-game.js" },
+  "devDependencies": { "electron": "^32.0.0" }
+}

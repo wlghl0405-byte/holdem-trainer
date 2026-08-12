@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="홀덤 트레이너">
+<meta name="theme-color" content="#0B0E0D">
+<title>홀덤 트레이너</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --bg:#0B0E0D; --panel:#13181A; --panel-2:#1A2124; --line:#242D30; --line-2:#313C40;
+  --ink:#E9EDEB; --ink-2:#93A09A; --mute:#5F6C68;
+  --felt:#15402F; --felt-hi:#1D543E; --rail:#2C2118; --rail-hi:#3B2D20;
+  --gold:#C9A227; --gold-soft:rgba(201,162,39,.14);
+  --card:#F6F4EC; --card-ink:#171A19; --card-red:#B23C31;
+  --good:#3E9E6E; --bad:#C0483C; --info:#4B84D8;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg); color:var(--ink); overflow:hidden;
+  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  font-size:14px; line-height:1.5; letter-spacing:-.01em; word-break:keep-all; -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;padding:0}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+
+/* ── 레이아웃 ── */
+.app{display:grid;grid-template-rows:auto 1fr;height:100%}
+header{display:flex;align-items:center;gap:16px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{margin:0;font-size:15px;font-weight:750;letter-spacing:-.02em}
+header h1 span{color:var(--gold)}
+.hstat{display:flex;gap:16px;margin-left:auto;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.hstat b{color:var(--ink);font-weight:700}
+.tbtn{border:1px solid var(--line-2);border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:650;color:var(--ink-2);background:var(--panel-2)}
+.tbtn:hover{color:var(--ink);border-color:var(--gold)}
+.tbtn.on{background:var(--gold);color:#20180A;border-color:transparent}
+
+main{display:grid;grid-template-columns:1fr 340px;min-height:0}
+.stage{display:flex;flex-direction:column;min-width:0;min-height:0;padding:14px 16px 0}
+aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;padding:14px}
+
+/* ── 테이블 ── */
+.tablewrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.felt{
+  position:relative;width:min(100%,860px);aspect-ratio:16/9;border-radius:46% / 52%;
+  background:radial-gradient(ellipse at 50% 44%, var(--felt-hi) 0%, var(--felt) 58%, #0F3325 100%);
+  border:13px solid var(--rail);
+  box-shadow:0 0 0 2px #0A0D0C inset, 0 22px 60px rgba(0,0,0,.55), 0 0 0 1px var(--rail-hi);
+}
+.center{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);text-align:center;width:82%}
+.potline{font-size:12px;color:rgba(255,255,255,.5);font-weight:650;letter-spacing:.04em}
+.pot{font-size:23px;font-weight:800;color:var(--gold);margin-top:1px}
+.board{display:flex;gap:7px;justify-content:center;margin-top:11px;min-height:78px}
+.stagetag{margin-top:8px;font-size:11.5px;color:rgba(255,255,255,.42);font-weight:650}
+
+/* 카드 */
+.card{width:54px;height:76px;border-radius:7px;background:var(--card);color:var(--card-ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;
+  box-shadow:0 3px 10px rgba(0,0,0,.4);flex:0 0 auto;font-weight:750;user-select:none}
+.card .rk{font-size:20px;line-height:1}
+.card .st{font-size:19px;line-height:1;margin-top:1px}
+.card.red{color:var(--card-red)}
+.card.sm{width:38px;height:54px;border-radius:5px}
+.card.sm .rk{font-size:14px}.card.sm .st{font-size:13px}
+.card.xs{width:26px;height:36px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.card.xs .rk{font-size:10.5px}.card.xs .st{font-size:10px}
+.card.back{background:repeating-linear-gradient(45deg,#2E4A63 0 5px,#24394D 5px 10px);border:2px solid #14202B;box-shadow:0 3px 10px rgba(0,0,0,.45)}
+.card.best{box-shadow:0 0 0 2px var(--gold), 0 3px 12px rgba(201,162,39,.4)}
+.card.ph{background:rgba(255,255,255,.05);box-shadow:none;border:1px dashed rgba(255,255,255,.14)}
+.deal{animation:deal .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes deal{from{opacity:0;transform:translateY(-14px) scale(.9)}to{opacity:1}}
+
+/* 좌석 */
+.seat{position:absolute;transform:translate(-50%,-50%);width:132px;text-align:center}
+.seat .cards{display:flex;gap:4px;justify-content:center;margin-bottom:5px;min-height:54px}
+.seat .plate{background:rgba(8,14,12,.82);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:5px 8px}
+.seat .nm{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seat .ch{font-size:12.5px;font-weight:750;color:var(--gold);margin-top:1px}
+.seat.turn .plate{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.seat.folded{opacity:.4}
+.seat.out{opacity:.22;filter:grayscale(1)}
+.seat .act{position:absolute;left:50%;transform:translateX(-50%);bottom:-21px;font-size:11px;font-weight:750;
+  padding:2px 9px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line-2);white-space:nowrap}
+.seat .act.fold{color:var(--mute)}.seat .act.raise{color:var(--gold);border-color:var(--gold)}
+.seat .act.call{color:var(--info)}.seat .act.allin{color:var(--bad);border-color:var(--bad)}
+.seat .bet{position:absolute;left:50%;transform:translateX(-50%);bottom:-44px;font-size:11.5px;font-weight:750;color:#EBD9A0}
+.dbtn{position:absolute;top:-6px;right:6px;width:19px;height:19px;border-radius:50%;background:var(--card);
+  color:#171A19;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,.4)}
+
+/* 내 자리 */
+.hero{display:flex;align-items:center;gap:16px;justify-content:center;padding:14px 0 8px}
+.hero .cards{display:flex;gap:7px}
+.hero .info{text-align:left}
+.hero .nm{font-size:13px;font-weight:750}
+.hero .ch{font-size:20px;font-weight:800;color:var(--gold)}
+.hero .made{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.hero .made b{color:var(--ink)}
+.hero.turn .info{position:relative}
+.hero.turn .nm::after{content:"내 차례";margin-left:8px;font-size:10.5px;color:var(--gold);border:1px solid var(--gold);padding:1px 7px;border-radius:999px;vertical-align:2px}
+
+/* 액션바 */
+.actions{display:flex;gap:9px;align-items:center;justify-content:center;padding:10px 0 16px;flex-wrap:wrap;min-height:64px}
+.abtn{min-width:96px;padding:12px 18px;border-radius:11px;font-size:14.5px;font-weight:750;border:1px solid var(--line-2);background:var(--panel-2);transition:transform .08s}
+.abtn:active{transform:scale(.98)}
+.abtn:disabled{opacity:.32;cursor:default}
+.abtn.fold{color:#D9908A}
+.abtn.call{background:var(--info);border-color:transparent;color:#fff}
+.abtn.raise{background:var(--gold);border-color:transparent;color:#20180A}
+.abtn.allin{border-color:var(--bad);color:#E8938B}
+.raisebox{display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:7px 12px}
+.raisebox input[type=range]{width:150px;accent-color:var(--gold)}
+.raisebox .amt{font-size:14px;font-weight:800;color:var(--gold);min-width:64px;text-align:right}
+.msg{text-align:center;font-size:13.5px;color:var(--ink-2);padding:6px 0}
+.msg b{color:var(--gold)}
+
+/* ── 사이드바 ── */
+.sec{margin-bottom:14px}
+.sec h2{margin:0 0 8px;font-size:12px;font-weight:750;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.sec h2 .r{margin-left:auto;font-size:11px;color:var(--mute);font-weight:600}
+.box{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px}
+
+/* 어드바이저 */
+.adv-off{color:var(--mute);font-size:12.5px;text-align:center;padding:14px 8px}
+.advrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 0}
+.advrow+.advrow{border-top:1px solid var(--line)}
+.advrow .k{font-size:12px;color:var(--ink-2)}
+.advrow .v{font-size:13.5px;font-weight:750;text-align:right}
+.advrow .v small{font-size:11px;color:var(--ink-2);font-weight:600;margin-left:3px}
+.meter{height:7px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:7px}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,#3E9E6E,#7FD3A6)}
+.verdict{margin-top:10px;padding:9px 11px;border-radius:9px;font-size:12.5px;font-weight:700;line-height:1.5}
+.verdict.go{background:rgba(62,158,110,.15);color:#7FD3A6}
+.verdict.no{background:rgba(192,72,60,.15);color:#E29A92}
+.verdict.mid{background:rgba(75,132,216,.14);color:#9FC0F0}
+.outlook{margin-top:9px}
+.olrow{display:grid;grid-template-columns:78px 1fr 42px;gap:7px;align-items:center;font-size:11.5px;padding:2px 0}
+.olrow .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.olrow .bar i{display:block;height:100%;background:var(--gold);opacity:.85}
+.olrow .p{text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+/* 족보표 */
+.rank{display:flex;align-items:center;gap:9px;padding:6px 7px;border-radius:8px}
+.rank+.rank{margin-top:1px}
+.rank .no{font-size:10.5px;color:var(--mute);width:15px;font-weight:700;text-align:center}
+.rank .nm{font-size:12.5px;font-weight:700;width:96px;flex:0 0 auto}
+.rank .ex{display:flex;gap:2px}
+.rank.hit{background:var(--gold-soft);box-shadow:inset 0 0 0 1px rgba(201,162,39,.4)}
+.rank.hit .nm{color:var(--gold)}
+
+/* 로그 */
+.log{max-height:190px;overflow-y:auto;font-size:12px;line-height:1.65}
+.log div{padding:1px 0;color:var(--ink-2)}
+.log .hd{color:var(--gold);font-weight:700;margin-top:5px}
+.log .win{color:#7FD3A6;font-weight:650}
+
+/* 모달 */
+.ov{position:fixed;inset:0;background:rgba(5,8,7,.72);backdrop-filter:blur(4px);z-index:60;display:none;align-items:center;justify-content:center;padding:20px}
+.ov.on{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line-2);border-radius:18px;padding:22px;width:100%;max-width:430px;max-height:90vh;overflow-y:auto}
+.modal h2{margin:0 0 4px;font-size:18px;font-weight:800}
+.modal p.sub{margin:0 0 18px;font-size:12.5px;color:var(--ink-2)}
+.fld{margin-bottom:16px}
+.fld label{display:block;font-size:12.5px;font-weight:650;color:var(--ink-2);margin-bottom:7px}
+.opts{display:flex;gap:7px;flex-wrap:wrap}
+.opt{padding:8px 14px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);font-size:13px;font-weight:700;color:var(--ink-2)}
+.opt.on{background:var(--gold);color:#20180A;border-color:transparent}
+.opt small{display:block;font-size:10.5px;font-weight:600;opacity:.75;margin-top:1px}
+.start{width:100%;padding:14px;border-radius:12px;background:var(--gold);color:#20180A;font-size:15px;font-weight:800;margin-top:4px}
+.hint{font-size:11.5px;color:var(--mute);margin-top:8px;line-height:1.6}
+.numin{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+  color:var(--ink);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;outline:none;margin-top:7px;font-family:inherit}
+.numin:focus{border-color:var(--gold)}
+.warn{font-size:11.5px;color:#E29A92;margin-top:6px}
+
+/* ── 모바일 탭바 (폰에서만 노출) ── */
+.mtabs{display:none;position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:rgba(15,20,21,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0)}
+.mtabs button{flex:1;min-height:50px;font-size:12px;font-weight:700;color:var(--mute)}
+.mtabs button.on{color:var(--gold)}
+
+@media (max-width:1080px){
+  body{overflow:auto}
+  main{grid-template-columns:1fr}
+  .mtabs{display:flex}
+  .stage{padding:10px 10px 0}
+  header{padding:8px 12px;gap:8px}
+  header h1{font-size:14px}
+  .hstat{gap:10px;font-size:11.5px}
+  .hstat span:nth-child(2){display:none}
+  .tbtn{padding:6px 10px;font-size:11.5px}
+  /* 사이드바를 하단 시트로 */
+  aside{position:fixed;left:0;right:0;bottom:0;height:64vh;z-index:45;
+    border-left:none;border-top:1px solid var(--line-2);border-radius:18px 18px 0 0;
+    transform:translateY(102%);transition:transform .26s cubic-bezier(.2,.8,.2,1);
+    padding:16px 14px calc(66px + env(safe-area-inset-bottom,0));box-shadow:0 -14px 40px rgba(0,0,0,.5)}
+  aside.open{transform:none}
+  .app{height:auto;min-height:100%}
+  .stage{padding-bottom:60px}
+}
+/* 폰 세로: 테이블을 세로로 키우고 카드·좌석을 축소 */
+@media (max-width:720px){
+  .felt{aspect-ratio:1/1;border-width:9px;border-radius:44% / 46%}
+  .center{width:92%;top:46%}
+  .pot{font-size:19px}
+  .board{gap:4px;min-height:60px}
+  .card{width:40px;height:57px;border-radius:6px}
+  .card .rk{font-size:15px}.card .st{font-size:14px}
+  .card.sm{width:27px;height:38px}
+  .card.sm .rk{font-size:10.5px}.card.sm .st{font-size:10px}
+  .seat{width:82px}
+  .seat .cards{min-height:38px;gap:3px}
+  .seat .plate{padding:3px 5px;border-radius:8px}
+  .seat .nm{font-size:10.5px}.seat .ch{font-size:11px}
+  .seat .act{font-size:10px;padding:1px 6px;bottom:-18px}
+  .seat .bet{font-size:10.5px;bottom:-37px}
+  .dbtn{width:16px;height:16px;font-size:9px}
+  .hero{gap:12px;padding:10px 0 6px}
+  .hero .ch{font-size:17px}
+  .hero .cards{gap:5px}
+  .actions{gap:7px;padding:8px 0 12px}
+  .abtn{min-width:0;flex:1 1 30%;padding:13px 10px;font-size:14px}
+  .raisebox{flex:1 1 100%;justify-content:space-between}
+  .raisebox input[type=range]{flex:1;width:auto}
+  .msg{font-size:12.5px}
+  .modal{padding:18px;border-radius:16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>홀덤 <span>트레이너</span></h1>
+    <div class="hstat">
+      <span>핸드 <b class="num" id="hHand">0</b></span>
+      <span>블라인드 <b class="num" id="hBlind">50 / 100</b></span>
+      <span>난이도 <b id="hDiff">중급</b></span>
+    </div>
+    <button class="tbtn" id="btnAdv">어드바이저 ON</button>
+    <button class="tbtn" id="btnSet">설정</button>
+  </header>
+
+  <main>
+    <section class="stage">
+      <div class="tablewrap">
+        <div class="felt" id="felt">
+          <div class="center">
+            <div class="potline">팟</div>
+            <div class="pot num" id="pot">0</div>
+            <div class="board" id="board"></div>
+            <div class="stagetag" id="stageTag"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero" id="hero">
+        <div class="cards" id="heroCards"></div>
+        <div class="info">
+          <div class="nm" id="heroName">나</div>
+          <div class="ch num" id="heroStack">0</div>
+          <div class="made" id="heroMade"></div>
+        </div>
+      </div>
+
+      <div class="msg" id="msg"></div>
+      <div class="actions" id="actions"></div>
+    </section>
+
+    <aside id="side">
+      <div class="sec" data-sec="adv">
+        <h2>어드바이저 <span class="r" id="advState">ON</span></h2>
+        <div class="box" id="advBox"></div>
+      </div>
+      <div class="sec" data-sec="ranks">
+        <h2>족보 <span class="r">위가 강함</span></h2>
+        <div class="box" id="ranks"></div>
+      </div>
+      <div class="sec" data-sec="log">
+        <h2>진행 기록</h2>
+        <div class="box log" id="log"></div>
+      </div>
+    </aside>
+  </main>
+
+  <nav class="mtabs" id="mtabs">
+    <button data-sec="game" class="on">게임</button>
+    <button data-sec="adv">어드바이저</button>
+    <button data-sec="ranks">족보</button>
+    <button data-sec="log">기록</button>
+  </nav>
+</div>
+
+<div class="ov on" id="ov">
+  <div class="modal">
+    <h2>게임 설정</h2>
+    <p class="sub">설정을 바꾸면 새 게임으로 시작합니다.</p>
+    <div class="fld">
+      <label>상대 수</label>
+      <div class="opts" id="optOpp"></div>
+    </div>
+    <div class="fld">
+      <label>난이도</label>
+      <div class="opts" id="optDiff"></div>
+    </div>
+    <div class="fld">
+      <label>어드바이저</label>
+      <div class="opts" id="optAdv"></div>
+    </div>
+    <div class="fld">
+      <label>시작 칩</label>
+      <div class="opts" id="optStack"></div>
+      <input class="numin num" id="inStack" type="number" min="100" step="1000" inputmode="numeric">
+    </div>
+    <div class="fld">
+      <label>최소 베팅 (빅블라인드)</label>
+      <div class="opts" id="optBB"></div>
+      <input class="numin num" id="inBB" type="number" min="2" step="10" inputmode="numeric">
+      <p class="hint" id="bbHint"></p>
+    </div>
+    <button class="start" id="btnStart">게임 시작</button>
+    <p class="hint">어드바이저는 승률·아웃츠·팟오즈를 계산해 콜 가치를 알려줍니다. 규칙에 익숙해지면 끄고 연습하세요.</p>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
+const SUIT = HE.SUIT_CH;
+const RED = (s) => s === 1 || s === 2;
+
+/* ───────── 상태 ───────── */
+const CFG = { opp: 3, diff: 'normal', advisor: true, stack: 10000, bb: 100 };
+// 최소 베팅 = 빅블라인드. 스몰블라인드는 그 절반(홀수면 내림, 최소 1).
+const SB = () => Math.max(1, Math.floor(CFG.bb / 2));
+const STEP = () => Math.max(1, Math.floor(CFG.bb / 2));
+const DIFF_NAME = { easy: '초급', normal: '중급', hard: '고수' };
+const G = {
+  players: [], deck: [], board: [], stage: 'idle', btn: 0, toAct: -1,
+  maxBet: 0, minRaise: 0, handNo: 0, log: [], showAll: false, busy: false,
+};
+const NAMES = ['정우', '민서', '태현', '지호', '수아', '건우', '예린', '도윤'];
+
+/* ───────── 카드 렌더 ───────── */
+function cardEl(c, cls) {
+  const d = document.createElement('div');
+  d.className = 'card ' + (cls || '');
+  if (!c) { d.className += ' back'; return d; }
+  if (RED(c.s)) d.classList.add('red');
+  d.innerHTML = '<span class="rk">' + HE.rankName(c.r) + '</span><span class="st">' + SUIT[c.s] + '</span>';
+  return d;
+}
+function ph() { const d = document.createElement('div'); d.className = 'card ph'; return d; }
+
+/* ───────── 게임 시작 ───────── */
+function newGame() {
+  G.players = [];
+  G.players.push({ id: 0, name: '나', human: true, stack: CFG.stack });
+  for (let i = 0; i < CFG.opp; i++) {
+    G.players.push({ id: i + 1, name: NAMES[i], human: false, stack: CFG.stack });
+  }
+  G.players.forEach((p) => { p.hole = []; p.bet = 0; p.committed = 0; p.folded = false; p.allIn = false; p.acted = false; p.out = false; p.last = ''; });
+  G.handNo = 0; G.btn = G.players.length - 1; G.log = [];
+  $('hBlind').textContent = fmt(SB()) + ' / ' + fmt(CFG.bb);
+  $('hDiff').textContent = DIFF_NAME[CFG.diff];
+  renderRanks();
+  startHand();
+}
+
+function alivePlayers() { return G.players.filter((p) => !p.out); }
+
+function startHand() {
+  G.players.forEach((p) => { if (p.stack <= 0) p.out = true; });
+  const alive = alivePlayers();
+  if (alive.length < 2 || G.players[0].out) return gameOver();
+
+  G.handNo++;
+  G.board = []; G.stage = 'preflop'; G.showAll = false; G.maxBet = 0; G.minRaise = CFG.bb;
+  G.deck = HE.shuffle(HE.newDeck());
+  G.players.forEach((p) => {
+    p.hole = []; p.bet = 0; p.committed = 0; p.folded = !!p.out; p.allIn = false; p.acted = false; p.last = '';
+  });
+  // 버튼 이동
+  do { G.btn = (G.btn + 1) % G.players.length; } while (G.players[G.btn].out);
+  alive.forEach((p) => { p.hole = [G.deck.pop(), G.deck.pop()]; });
+
+  logLine('핸드 #' + G.handNo, 'hd');
+  const order = seatOrder();
+  const sbIdx = order.length === 2 ? G.btn : nextAlive(G.btn);
+  const bbIdx = nextAlive(sbIdx);
+  postBlind(sbIdx, SB(), 'SB');
+  postBlind(bbIdx, CFG.bb, 'BB');
+  G.maxBet = CFG.bb; G.minRaise = CFG.bb;
+  G.toAct = nextAlive(bbIdx);
+  G.players.forEach((p) => { p.acted = false; });
+  render();
+  scheduleTurn();
+}
+
+function seatOrder() { return G.players.map((p, i) => (p.out ? -1 : i)).filter((i) => i >= 0); }
+function nextAlive(from) {
+  let i = from;
+  for (let k = 0; k < G.players.length; k++) {
+    i = (i + 1) % G.players.length;
+    if (!G.players[i].out) return i;
+  }
+  return from;
+}
+function postBlind(i, amt, tag) {
+  const p = G.players[i];
+  const a = Math.min(amt, p.stack);
+  p.stack -= a; p.bet += a; p.committed += a;
+  if (p.stack === 0) p.allIn = true;
+  p.last = tag;
+}
+
+/* ───────── 진행 ───────── */
+const inHand = () => G.players.filter((p) => !p.out && !p.folded);
+const canAct = () => inHand().filter((p) => !p.allIn);
+const potTotal = () => G.players.reduce((a, p) => a + p.committed, 0);
+
+function roundDone() {
+  const act = canAct();
+  if (inHand().length <= 1) return true;
+  if (act.length === 0) return true;
+  return act.every((p) => p.acted && p.bet === G.maxBet);
+}
+
+function nextActor(from) {
+  let i = from;
+  for (let k = 0; k < G.players.length; k++) {
+    i = (i + 1) % G.players.length;
+    const p = G.players[i];
+    if (!p.out && !p.folded && !p.allIn) return i;
+  }
+  return -1;
+}
+
+function advance() {
+  if (inHand().length <= 1) return endHand();
+  if (roundDone()) return nextStage();
+  G.toAct = nextActor(G.toAct);
+  render();
+  scheduleTurn();
+}
+
+function scheduleTurn() {
+  const p = G.players[G.toAct];
+  if (!p || p.human) { G.busy = false; render(); return; }
+  G.busy = true;
+  setTimeout(() => { aiAct(G.toAct); }, CFG.diff === 'easy' ? 480 : 620);
+}
+
+function nextStage() {
+  G.players.forEach((p) => { p.bet = 0; p.acted = false; p.last = ''; });
+  G.maxBet = 0; G.minRaise = CFG.bb;
+
+  const order = ['preflop', 'flop', 'turn', 'river', 'showdown'];
+  const next = order[order.indexOf(G.stage) + 1];
+  G.stage = next;
+  if (next === 'flop') { G.deck.pop(); G.board.push(G.deck.pop(), G.deck.pop(), G.deck.pop()); logLine('플랍: ' + G.board.map(HE.cardName).join(' ')); }
+  else if (next === 'turn') { G.deck.pop(); G.board.push(G.deck.pop()); logLine('턴: ' + HE.cardName(G.board[3])); }
+  else if (next === 'river') { G.deck.pop(); G.board.push(G.deck.pop()); logLine('리버: ' + HE.cardName(G.board[4])); }
+  else return endHand();
+
+  // 액션 가능한 사람이 1명 이하면 남은 보드를 모두 깔고 쇼다운
+  if (canAct().length <= 1) { render(); setTimeout(nextStage, 700); return; }
+  G.toAct = nextActor(G.btn);
+  render();
+  scheduleTurn();
+}
+
+/* ───────── 액션 ───────── */
+function doAction(i, type, amount) {
+  const p = G.players[i];
+  const toCall = G.maxBet - p.bet;
+  if (type === 'fold') { p.folded = true; p.last = '폴드'; logLine(p.name + ' 폴드'); }
+  else if (type === 'check') { p.last = '체크'; logLine(p.name + ' 체크'); }
+  else if (type === 'call') {
+    const a = Math.min(toCall, p.stack);
+    p.stack -= a; p.bet += a; p.committed += a;
+    if (p.stack === 0) { p.allIn = true; p.last = '올인'; logLine(p.name + ' 콜 올인 ' + fmt(a)); }
+    else { p.last = '콜'; logLine(p.name + ' 콜 ' + fmt(a)); }
+  } else if (type === 'raise') {
+    const target = Math.min(amount, p.bet + p.stack);
+    const add = target - p.bet;
+    p.stack -= add; p.bet += add; p.committed += add;
+    const raiseBy = target - G.maxBet;
+    if (raiseBy > 0) {
+      G.minRaise = Math.max(G.minRaise, raiseBy);
+      G.maxBet = target;
+      G.players.forEach((q) => { if (q !== p && !q.folded && !q.allIn && !q.out) q.acted = false; });
+    }
+    if (p.stack === 0) { p.allIn = true; p.last = '올인'; logLine(p.name + ' 올인 ' + fmt(target)); }
+    else { p.last = '레이즈'; logLine(p.name + (toCall > 0 ? ' 레이즈 ' : ' 벳 ') + fmt(target)); }
+  }
+  p.acted = true;
+  advance();
+}
+
+/* ───────── AI ───────── */
+const ITERS = { easy: 120, normal: 420, hard: 900 };
+function aiAct(i) {
+  const p = G.players[i];
+  if (!p || p.folded || p.allIn || p.out) return advance();
+  const opp = Math.max(1, inHand().length - 1);
+  const toCall = G.maxBet - p.bet;
+  const pot = potTotal();
+  const potOdds = toCall > 0 ? toCall / (pot + toCall) : 0;
+  let eq = HE.equity(p.hole, G.board, opp, ITERS[CFG.diff]);
+
+  const R = Math.random();
+  let bluff = CFG.diff === 'easy' ? 0.03 : CFG.diff === 'normal' ? 0.10 : 0.18;
+  // 고수는 포지션(버튼에 가까울수록)과 상대 수를 반영
+  if (CFG.diff === 'hard') {
+    const seatsAfter = (i - G.btn + G.players.length) % G.players.length;
+    eq += seatsAfter <= 1 ? 0.03 : -0.02;
+    if (opp >= 3) eq -= 0.04;
+  }
+  if (CFG.diff === 'easy') eq = eq * 0.75 + 0.18; // 판단 흐림(콜링 스테이션 성향)
+
+  const potBet = Math.max(CFG.bb, Math.round(pot * (CFG.diff === 'hard' ? (R < 0.3 ? 0.75 : 0.5) : 0.6) / CFG.bb) * CFG.bb);
+  const raiseTo = Math.min(p.bet + p.stack, G.maxBet + Math.max(G.minRaise, potBet));
+
+  if (toCall === 0) {
+    const betThreshold = CFG.diff === 'easy' ? 0.72 : CFG.diff === 'normal' ? 0.60 : 0.55;
+    if (eq > betThreshold && R < 0.82) return doAction(i, 'raise', raiseTo);
+    if (R < bluff && G.stage !== 'preflop') return doAction(i, 'raise', raiseTo);
+    return doAction(i, 'check');
+  }
+  // 콜 필요
+  const need = potOdds * (CFG.diff === 'easy' ? 0.62 : CFG.diff === 'normal' ? 0.95 : 1.05);
+  const raiseThreshold = CFG.diff === 'easy' ? 0.80 : CFG.diff === 'normal' ? 0.68 : 0.62;
+  if (eq > raiseThreshold && R < 0.7 && p.stack > toCall) return doAction(i, 'raise', raiseTo);
+  if (eq >= need) return doAction(i, 'call');
+  if (R < bluff * 0.5 && p.stack > toCall * 3) return doAction(i, 'raise', raiseTo);
+  return doAction(i, 'fold');
+}
+
+/* ───────── 핸드 종료 ───────── */
+function endHand() {
+  G.stage = 'showdown';
+  const live = inHand();
+  if (live.length === 1) {
+    const w = live[0];
+    const amt = potTotal();
+    w.stack += amt;
+    logLine(w.name + ' 승리 ' + fmt(amt) + ' (모두 폴드)', 'win');
+  } else {
+    G.showAll = true;
+    while (G.board.length < 5) { G.deck.pop(); G.board.push(G.deck.pop()); }
+    const scores = G.players.map((p) => (!p.out && !p.folded ? HE.bestFive(p.hole.concat(G.board)) : null));
+    const pots = HE.buildPots(G.players);
+    pots.forEach((pot, pi) => {
+      let best = -1, winners = [];
+      pot.eligible.forEach((idx) => {
+        const s = scores[idx] ? scores[idx].score : -1;
+        if (s > best) { best = s; winners = [idx]; }
+        else if (s === best) winners.push(idx);
+      });
+      const share = Math.floor(pot.amt / winners.length);
+      winners.forEach((idx) => { G.players[idx].stack += share; });
+      // 나눠떨어지지 않는 칩은 버튼 다음 자리부터 순서대로 지급 (표준 규칙)
+      let rem = pot.amt - share * winners.length;
+      if (rem > 0) {
+        const order = winners.slice().sort((a, b) =>
+          ((a - G.btn + G.players.length) % G.players.length) - ((b - G.btn + G.players.length) % G.players.length));
+        for (let k = 0; rem > 0; k++, rem--) G.players[order[k % order.length]].stack += 1;
+      }
+      const label = pots.length > 1 ? (pi === 0 ? '메인팟' : '사이드팟' + pi) + ' ' : '';
+      logLine(label + winners.map((x) => G.players[x].name).join(', ') + ' 승리 ' + fmt(share) +
+        ' (' + HE.handName(best) + ')', 'win');
+    });
+    G.players.forEach((p, idx) => {
+      if (!p.out && !p.folded) logLine('  ' + p.name + ': ' + p.hole.map(HE.cardName).join(' ') + ' → ' + HE.handName(scores[idx].score));
+    });
+  }
+  G.toAct = -1;
+  render();
+  showNextButton();
+}
+
+function showNextButton() {
+  const a = $('actions'); a.innerHTML = '';
+  const alive = G.players.filter((p) => p.stack > 0 && !p.out);
+  if (G.players[0].stack <= 0) { $('msg').innerHTML = '<b>칩을 모두 잃었습니다.</b> 설정에서 새 게임을 시작하세요.'; return; }
+  if (alive.length < 2) { $('msg').innerHTML = '<b>테이블의 칩을 모두 획득했습니다.</b>'; return; }
+  const b = document.createElement('button');
+  b.className = 'abtn raise'; b.textContent = '다음 핸드';
+  b.onclick = () => startHand();
+  a.appendChild(b);
+}
+
+function gameOver() {
+  $('msg').innerHTML = G.players[0] && G.players[0].stack > 0
+    ? '<b>승리</b> 상대가 모두 탈락했습니다.' : '<b>게임 종료</b> 칩을 모두 잃었습니다.';
+  $('actions').innerHTML = '';
+  const b = document.createElement('button');
+  b.className = 'abtn raise'; b.textContent = '새 게임';
+  b.onclick = () => $('ov').classList.add('on');
+  $('actions').appendChild(b);
+}
+
+/* ───────── 렌더 ───────── */
+function render() {
+  $('hHand').textContent = G.handNo;
+  $('pot').textContent = fmt(potTotal());
+  $('stageTag').textContent = { preflop: '프리플랍', flop: '플랍', turn: '턴', river: '리버', showdown: '쇼다운' }[G.stage] || '';
+
+  // 보드
+  const bd = $('board'); bd.innerHTML = '';
+  const heroBest = bestSet();
+  for (let i = 0; i < 5; i++) {
+    if (i < G.board.length) {
+      const c = G.board[i];
+      const el = cardEl(c, 'deal' + (heroBest.has(HE.cardId(c)) ? ' best' : ''));
+      bd.appendChild(el);
+    } else bd.appendChild(ph());
+  }
+
+  // 좌석
+  document.querySelectorAll('.seat').forEach((s) => s.remove());
+  const felt = $('felt');
+  const opps = G.players.filter((p) => p.id !== 0);
+  const n = opps.length;
+  opps.forEach((p, k) => {
+    const t = (170 + ((k + 1) * 200) / (n + 1)) * Math.PI / 180;
+    const x = 50 + 46 * Math.cos(t), y = 47 + 52 * Math.sin(t);
+    const idx = G.players.indexOf(p);
+    const d = document.createElement('div');
+    d.className = 'seat' + (idx === G.toAct ? ' turn' : '') + (p.folded ? ' folded' : '') + (p.out ? ' out' : '');
+    d.style.left = x + '%'; d.style.top = y + '%';
+    const cards = document.createElement('div'); cards.className = 'cards';
+    if (!p.out && p.hole.length) {
+      const reveal = G.showAll && !p.folded;
+      p.hole.forEach((c) => cards.appendChild(cardEl(reveal ? c : null, 'sm')));
+    }
+    d.appendChild(cards);
+    const plate = document.createElement('div'); plate.className = 'plate';
+    plate.innerHTML = '<div class="nm">' + p.name + '</div><div class="ch num">' + fmt(p.stack) + '</div>';
+    d.appendChild(plate);
+    if (idx === G.btn && !p.out) { const b = document.createElement('div'); b.className = 'dbtn'; b.textContent = 'D'; d.appendChild(b); }
+    if (p.last) { const a = document.createElement('div'); a.className = 'act ' + actClass(p.last); a.textContent = p.last; d.appendChild(a); }
+    if (p.bet > 0) { const bt = document.createElement('div'); bt.className = 'bet num'; bt.textContent = fmt(p.bet); d.appendChild(bt); }
+    felt.appendChild(d);
+  });
+
+  // 내 자리
+  const me = G.players[0];
+  const hc = $('heroCards'); hc.innerHTML = '';
+  if (me.hole.length) me.hole.forEach((c) => hc.appendChild(cardEl(c, 'deal' + (heroBest.has(HE.cardId(c)) ? ' best' : ''))));
+  else { hc.appendChild(ph()); hc.appendChild(ph()); }
+  $('heroStack').textContent = fmt(me.stack);
+  $('hero').className = 'hero' + (G.toAct === 0 ? ' turn' : '');
+  const dealerMe = G.btn === 0 ? ' · 딜러' : '';
+  $('heroName').textContent = '나' + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '');
+  if (me.hole.length && !me.out) {
+    const bf = HE.bestFive(me.hole.concat(G.board));
+    $('heroMade').innerHTML = '현재 <b>' + HE.handName(bf.score) + '</b>';
+  } else $('heroMade').textContent = '';
+
+  renderActions();
+  renderAdvisor();
+  renderRanks();
+  renderLog();
+}
+function actClass(t) {
+  if (t === '폴드') return 'fold';
+  if (t === '레이즈' || t === '벳') return 'raise';
+  if (t === '올인') return 'allin';
+  if (t === '콜') return 'call';
+  return '';
+}
+function bestSet() {
+  const me = G.players[0];
+  if (!me || !me.hole.length || G.board.length < 3) return new Set();
+  const bf = HE.bestFive(me.hole.concat(G.board));
+  return new Set(bf.cards.map(HE.cardId));
+}
+
+function renderActions() {
+  const a = $('actions'); a.innerHTML = '';
+  const me = G.players[0];
+  if (G.toAct !== 0 || G.stage === 'showdown' || me.folded || me.out) {
+    if (G.stage !== 'showdown') $('msg').textContent = G.toAct >= 0 ? G.players[G.toAct].name + ' 차례' : '';
+    return;
+  }
+  const toCall = G.maxBet - me.bet;
+  $('msg').textContent = toCall > 0 ? '콜 하려면 ' + fmt(Math.min(toCall, me.stack)) + ' 필요' : '베팅 없음, 체크 가능';
+
+  const mk = (label, cls, fn, dis) => {
+    const b = document.createElement('button');
+    b.className = 'abtn ' + cls; b.textContent = label; b.disabled = !!dis; b.onclick = fn;
+    a.appendChild(b); return b;
+  };
+  mk('폴드', 'fold', () => doAction(0, 'fold'));
+  if (toCall === 0) mk('체크', '', () => doAction(0, 'check'));
+  else mk('콜 ' + fmt(Math.min(toCall, me.stack)), 'call', () => doAction(0, 'call'));
+
+  const minRaise = Math.min(G.maxBet + G.minRaise, me.bet + me.stack);
+  const maxRaise = me.bet + me.stack;
+  if (maxRaise > G.maxBet) {
+    const box = document.createElement('div'); box.className = 'raisebox';
+    const r = document.createElement('input');
+    r.type = 'range'; r.min = minRaise; r.max = maxRaise; r.step = STEP();
+    r.value = Math.min(maxRaise, Math.max(minRaise, Math.round(potTotal() * 0.6 / CFG.bb) * CFG.bb));
+    const amt = document.createElement('span'); amt.className = 'amt num'; amt.textContent = fmt(r.value);
+    r.oninput = () => { amt.textContent = fmt(r.value); };
+    box.appendChild(r); box.appendChild(amt);
+    a.appendChild(box);
+    mk(toCall > 0 ? '레이즈' : '벳', 'raise', () => doAction(0, 'raise', +r.value));
+  }
+  mk('올인 ' + fmt(me.stack), 'allin', () => doAction(0, 'raise', me.bet + me.stack));
+}
+
+/* ───────── 어드바이저 ───────── */
+function renderAdvisor() {
+  const box = $('advBox');
+  $('advState').textContent = CFG.advisor ? 'ON' : 'OFF';
+  if (!CFG.advisor) { box.innerHTML = '<div class="adv-off">어드바이저 꺼짐<br>설정에서 켤 수 있습니다.</div>'; return; }
+  const me = G.players[0];
+  if (!me.hole.length || me.folded || me.out || G.stage === 'idle') {
+    box.innerHTML = '<div class="adv-off">핸드 진행 중에 표시됩니다.</div>'; return;
+  }
+  const opp = Math.max(1, inHand().length - 1);
+  const bf = HE.bestFive(me.hole.concat(G.board));
+  const eq = HE.equity(me.hole, G.board, opp, 2600);
+  const ou = HE.outs(me.hole, G.board);
+  const toCall = G.maxBet - me.bet;
+  const pot = potTotal();
+  const potOdds = toCall > 0 ? toCall / (pot + toCall) : 0;
+  const left = 5 - G.board.length;
+  const outP = ou.n ? (left >= 2 ? Math.min(0.95, ou.n * 4 / 100) : ou.n * 2 / 100) : 0;
+
+  let rows = '';
+  const row = (k, v) => { rows += '<div class="advrow"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; };
+  row('현재 족보', HE.handName(bf.score));
+  row('승률 (' + opp + '명 상대)', (eq * 100).toFixed(1) + '<small>%</small>');
+  if (G.board.length < 5) {
+    row('아웃츠', ou.n + '<small>장</small>' + (ou.n ? ' · 개선 ' + (outP * 100).toFixed(0) + '<small>%</small>' : ''));
+  }
+  if (toCall > 0) row('팟오즈', (potOdds * 100).toFixed(1) + '<small>% 필요</small>');
+
+  let verdict = '', vc = 'mid';
+  if (toCall === 0) {
+    if (eq > 0.62) { verdict = '승률이 높습니다. 벳으로 팟을 키울 자리입니다.'; vc = 'go'; }
+    else { verdict = '무료로 다음 카드를 봅니다. 체크가 무난합니다.'; vc = 'mid'; }
+  } else if (eq >= potOdds + 0.12) { verdict = '승률이 팟오즈를 크게 넘습니다. 콜 또는 레이즈가 유리합니다.'; vc = 'go'; }
+  else if (eq >= potOdds) { verdict = '승률이 팟오즈보다 조금 높습니다. 콜 가치가 있습니다.'; vc = 'mid'; }
+  else { verdict = '승률이 팟오즈에 못 미칩니다. 폴드가 손실을 줄입니다.'; vc = 'no'; }
+
+  // 앞으로 만들 수 있는 족보
+  let ol = '';
+  if (G.board.length >= 3 && G.board.length < 5) {
+    const o = HE.outlook(me.hole, G.board);
+    const top = o.dist.filter((x) => x.p >= 0.005).slice(0, 5);
+    const mx = Math.max(...top.map((x) => x.p), 0.001);
+    ol = '<div class="outlook"><div class="k" style="font-size:11.5px;color:var(--ink-2);margin-bottom:5px">완성 가능 족보 (리버까지)</div>' +
+      top.map((x) => '<div class="olrow"><span>' + HE.CATS[x.cat].ko + '</span>' +
+        '<span class="bar"><i style="width:' + (x.p / mx * 100) + '%"></i></span>' +
+        '<span class="p">' + (x.p * 100).toFixed(1) + '%</span></div>').join('') + '</div>';
+  }
+
+  box.innerHTML = rows +
+    '<div class="meter"><i style="width:' + (eq * 100).toFixed(1) + '%"></i></div>' +
+    '<div class="verdict ' + vc + '">' + verdict + '</div>' + ol;
+}
+
+/* ───────── 족보표 ───────── */
+const RANK_EX = [
+  [9, 'As Ks Qs Js Ts'], [8, '9h 8h 7h 6h 5h'], [7, 'Ks Kh Kd Kc 3s'], [6, 'Js Jh Jd 8s 8h'],
+  [5, 'Ad Jd 9d 6d 3d'], [4, 'Ts 9h 8d 7c 6s'], [3, '7s 7h 7d Ks 2h'], [2, 'As Ah 9d 9c 4s'],
+  [1, 'Qs Qh 8d 5c 2s'], [0, 'As Jh 9d 6c 3s'],
+];
+const PS = { s: 0, h: 1, d: 2, c: 3 }, PR = { T: 10, J: 11, Q: 12, K: 13, A: 14 };
+const parseC = (t) => ({ r: PR[t[0]] || +t[0], s: PS[t[1]] });
+function renderRanks() {
+  const me = G.players[0];
+  let cur = -1;
+  if (me && me.hole && me.hole.length) cur = HE.catOf(HE.bestFive(me.hole.concat(G.board)).score);
+  $('ranks').innerHTML = RANK_EX.map(([cat, ex], i) =>
+    '<div class="rank' + (cat === cur ? ' hit' : '') + '"><span class="no num">' + (i + 1) + '</span>' +
+    '<span class="nm">' + HE.CATS[cat].ko + '</span><span class="ex">' +
+    ex.split(' ').map((t) => { const c = parseC(t); return '<span class="card xs' + (RED(c.s) ? ' red' : '') + '"><span class="rk">' + HE.rankName(c.r) + '</span><span class="st">' + SUIT[c.s] + '</span></span>'; }).join('') +
+    '</span></div>').join('');
+}
+
+/* ───────── 로그 ───────── */
+function logLine(t, cls) { G.log.push({ t, cls }); if (G.log.length > 200) G.log.shift(); }
+function renderLog() {
+  const el = $('log');
+  el.innerHTML = G.log.slice(-60).map((l) => '<div class="' + (l.cls || '') + '">' + l.t + '</div>').join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ───────── 설정 ───────── */
+function buildOpts() {
+  const mk = (host, items, get, set) => {
+    const h = $(host); h.innerHTML = '';
+    items.forEach(([val, label, sub]) => {
+      const b = document.createElement('button');
+      b.className = 'opt' + (get() === val ? ' on' : '');
+      b.innerHTML = label + (sub ? '<small>' + sub + '</small>' : '');
+      b.onclick = () => { set(val); buildOpts(); };
+      h.appendChild(b);
+    });
+  };
+  mk('optOpp', [1, 2, 3, 4, 5, 6, 7, 8].map((n) => [n, n + '명']), () => CFG.opp, (v) => CFG.opp = v);
+  mk('optDiff', [['easy', '초급', '느슨하게 콜'], ['normal', '중급', '확률 기반'], ['hard', '고수', '포지션·블러프']], () => CFG.diff, (v) => CFG.diff = v);
+  mk('optAdv', [[true, '받기', '승률·추천 표시'], [false, '안받기', '혼자 판단']], () => CFG.advisor, (v) => CFG.advisor = v);
+  mk('optStack', [[10000, '1만'], [20000, '2만'], [50000, '5만'], [100000, '10만']], () => CFG.stack, (v) => { CFG.stack = v; syncStake(); });
+  mk('optBB', [[100, '100'], [200, '200'], [500, '500'], [1000, '1,000']], () => CFG.bb, (v) => { CFG.bb = v; syncStake(); });
+  syncStake();
+}
+
+/** 시작 칩 / 최소 베팅 입력칸 동기화 및 검증 */
+function syncStake() {
+  const s = $('inStack'), b = $('inBB');
+  if (s.value != CFG.stack) s.value = CFG.stack;
+  if (b.value != CFG.bb) b.value = CFG.bb;
+  const ratio = Math.floor(CFG.stack / CFG.bb);
+  let msg = '스몰블라인드 ' + fmt(SB()) + ' · 시작 칩이 최소 베팅의 ' + fmt(ratio) + '배';
+  if (ratio < 10) msg += ' (너무 적어 금방 올인이 됩니다)';
+  $('bbHint').textContent = msg;
+}
+function clampStake() {
+  CFG.stack = Math.max(100, Math.min(10000000, Math.round(+$('inStack').value || 10000)));
+  CFG.bb = Math.max(2, Math.min(Math.floor(CFG.stack / 2), Math.round(+$('inBB').value || 100)));
+}
+$('inStack').oninput = () => { clampStake(); syncStake(); buildOpts(); };
+$('inBB').oninput = () => { clampStake(); syncStake(); buildOpts(); };
+$('inStack').onblur = () => { clampStake(); syncStake(); buildOpts(); };
+$('inBB').onblur = () => { clampStake(); syncStake(); buildOpts(); };
+
+/* 모바일 하단 탭: 사이드 패널을 시트로 열고 섹션 전환 */
+const isMobile = () => window.innerWidth <= 1080;
+document.querySelectorAll('#mtabs button').forEach((b) => {
+  b.onclick = () => {
+    document.querySelectorAll('#mtabs button').forEach((x) => x.classList.toggle('on', x === b));
+    const sec = b.dataset.sec, side = $('side');
+    if (sec === 'game') { side.classList.remove('open'); return; }
+    side.classList.add('open');
+    document.querySelectorAll('#side .sec').forEach((s) => { s.style.display = s.dataset.sec === sec ? '' : 'none'; });
+    side.scrollTop = 0;
+  };
+});
+window.addEventListener('resize', () => {
+  if (!isMobile()) {
+    $('side').classList.remove('open');
+    document.querySelectorAll('#side .sec').forEach((s) => { s.style.display = ''; });
+  }
+});
+$('btnStart').onclick = () => { $('ov').classList.remove('on'); newGame(); };
+$('btnSet').onclick = () => { buildOpts(); $('ov').classList.add('on'); };
+$('btnAdv').onclick = () => {
+  CFG.advisor = !CFG.advisor;
+  $('btnAdv').textContent = '어드바이저 ' + (CFG.advisor ? 'ON' : 'OFF');
+  $('btnAdv').classList.toggle('on', CFG.advisor);
+  renderAdvisor();
+};
+
+buildOpts();
+renderRanks();
+$('btnAdv').classList.toggle('on', CFG.advisor);
+</script>
+</body>
+</html>
