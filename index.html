@@ -470,7 +470,8 @@ const G = {
   players: [], deck: [], board: [], stage: 'idle', btn: 0, toAct: -1,
   maxBet: 0, minRaise: 0, handNo: 0, log: [], showAll: false, busy: false,
 };
-const NAMES = ['정우', '민서', '태현', '지호', '수아', '건우', '예린', '도윤'];
+// 상대 이름은 앞에서부터 순서대로 배정된다 (상대 수를 줄여도 앞의 이름은 항상 등장)
+const NAMES = ['해성', '병욱', '지석', '민서', '태현', '수아', '건우', '예린'];
 
 /* ───────── 카드 렌더 ───────── */
 function cardEl(c, cls) {
