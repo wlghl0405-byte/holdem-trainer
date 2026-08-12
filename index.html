@@ -78,9 +78,13 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 
 /* 액션 알림 (누가 무엇을 했는지 크게) */
 .ann{position:absolute;left:50%;top:78%;transform:translate(-50%,-50%) scale(.9);z-index:11;
+  display:flex;align-items:center;justify-content:center;line-height:1;
   background:rgba(8,13,11,.9);border:1px solid rgba(255,255,255,.16);border-radius:999px;
-  padding:7px 16px;font-size:14px;font-weight:750;white-space:nowrap;color:var(--ink);
+  padding:9px 16px;font-size:14px;font-weight:750;white-space:nowrap;color:var(--ink);
   opacity:0;transition:opacity .16s,transform .16s;pointer-events:none;box-shadow:0 8px 26px rgba(0,0,0,.5)}
+.ann .anncard{display:inline-flex;align-items:center;gap:1px;background:var(--card);color:var(--card-ink);
+  border-radius:4px;padding:3px 6px;margin-left:8px;font-size:13px;font-weight:850;line-height:1}
+.ann .anncard.red{color:var(--card-red)}
 .ann.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .ann .who{color:var(--ink-2);font-weight:650;margin-right:5px}
 .ann.raise{border-color:var(--gold);color:var(--gold)}
@@ -100,6 +104,8 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .rlabel.win{color:var(--gold);text-shadow:0 0 26px rgba(201,162,39,.45)}
 .rlabel.lose{color:#DE6A60}
 .rlabel.draw{color:#9FC0F0}
+.rlabel.fold{color:#7C8A86;letter-spacing:.1em}
+.rdelta.fold{color:var(--ink-2)}
 .rdelta{font-size:21px;font-weight:850;margin-top:5px;font-variant-numeric:tabular-nums}
 .rdelta.win{color:var(--gold)}.rdelta.lose{color:#DE6A60}.rdelta.draw{color:var(--ink-2)}
 .rwho{font-size:13.5px;color:var(--ink);font-weight:700;margin-top:9px}
@@ -445,8 +451,17 @@ const RED = (s) => s === 1 || s === 2;
 /* ───────── 상태 ───────── */
 const CFG = { opp: 3, diff: 'normal', advisor: true, stack: 10000, bb: 100, speed: 'slow' };
 // 진행 속도. 초보자가 흐름을 따라갈 수 있도록 기본은 '느리게'.
-const SPEEDS = { slow: { ai: 1500, stage: 1400, ann: 1500 }, normal: { ai: 800, stage: 800, ann: 900 }, fast: { ai: 360, stage: 420, ann: 520 } };
-const SP = () => SPEEDS[CFG.speed] || SPEEDS.slow;
+const SPEEDS = {
+  slow: { ai: 1500, stage: 1400, ann: 1500 },
+  normal: { ai: 800, stage: 800, ann: 900 },
+  fast: { ai: 360, stage: 420, ann: 520 },
+  folded: { ai: 260, stage: 300, ann: 400 },  // 내가 폴드한 판은 빠르게 넘긴다
+};
+const SP = () => {
+  const me = G.players[0];
+  if (me && me.folded && G.stage !== 'showdown') return SPEEDS.folded;
+  return SPEEDS[CFG.speed] || SPEEDS.slow;
+};
 // 최소 베팅 = 빅블라인드. 스몰블라인드는 그 절반(홀수면 내림, 최소 1).
 const SB = () => Math.max(1, Math.floor(CFG.bb / 2));
 const STEP = () => Math.max(1, Math.floor(CFG.bb / 2));
@@ -587,9 +602,10 @@ function nextStage() {
   const order = ['preflop', 'flop', 'turn', 'river', 'showdown'];
   const next = order[order.indexOf(G.stage) + 1];
   G.stage = next;
-  if (next === 'flop') { G.deck.pop(); G.board.push(G.deck.pop(), G.deck.pop(), G.deck.pop()); logLine('플랍: ' + G.board.map(HE.cardName).join(' ')); announce('플랍', 'stage'); }
-  else if (next === 'turn') { G.deck.pop(); G.board.push(G.deck.pop()); logLine('턴: ' + HE.cardName(G.board[3])); announce('턴 · ' + HE.cardName(G.board[3]), 'stage'); }
-  else if (next === 'river') { G.deck.pop(); G.board.push(G.deck.pop()); logLine('리버: ' + HE.cardName(G.board[4])); announce('리버 · ' + HE.cardName(G.board[4]), 'stage'); }
+  const annCard = (c) => '<span class="anncard' + (RED(c.s) ? ' red' : '') + '">' + HE.rankName(c.r) + SUIT[c.s] + '</span>';
+  if (next === 'flop') { G.deck.pop(); G.board.push(G.deck.pop(), G.deck.pop(), G.deck.pop()); logLine('플랍: ' + G.board.map(HE.cardName).join(' ')); announce('플랍' + G.board.map(annCard).join(''), 'stage'); }
+  else if (next === 'turn') { G.deck.pop(); G.board.push(G.deck.pop()); logLine('턴: ' + HE.cardName(G.board[3])); announce('턴' + annCard(G.board[3]), 'stage'); }
+  else if (next === 'river') { G.deck.pop(); G.board.push(G.deck.pop()); logLine('리버: ' + HE.cardName(G.board[4])); announce('리버' + annCard(G.board[4]), 'stage'); }
   else return endHand();
 
   // 액션 가능한 사람이 1명 이하면 남은 보드를 모두 깔고 쇼다운
@@ -736,8 +752,9 @@ function showResult(res) {
   const me = G.players[0];
   const delta = me.stack - (G.myStart || 0);
   const iWon = res.winners.indexOf('나') >= 0;
-  const kind = delta > 0 ? 'win' : delta < 0 ? 'lose' : 'draw';
-  const label = delta > 0 ? 'WIN' : delta < 0 ? 'LOSE' : 'DRAW';
+  // 폴드는 승패가 아니라 '기권'이다. 손익 0이어도 DRAW(팟 분배)와 구분해서 표기한다.
+  const kind = me.folded ? 'fold' : delta > 0 ? 'win' : delta < 0 ? 'lose' : 'draw';
+  const label = me.folded ? 'FOLD' : delta > 0 ? 'WIN' : delta < 0 ? 'LOSE' : 'DRAW';
 
   let who = '';
   if (iWon && res.winners.length === 1) who = res.allFolded ? '상대가 모두 폴드했습니다' : '내 <b>' + res.hand + '</b> 승리';
@@ -767,7 +784,7 @@ function showResult(res) {
   } else if (res.cards && res.cards.length) {
     body = '<div class="rcards">' + res.cards.map(mini).join('') + '</div>';
   } else if (me.folded && !iWon) {
-    body = '<div class="rsub">폴드로 이번 핸드를 넘겼습니다</div>';
+    body = '<div class="rsub">' + (delta === 0 ? '칩을 걸기 전에 폴드해 손실이 없습니다' : '폴드로 이번 핸드를 넘겼습니다') + '</div>';
   }
 
   $('result').innerHTML =
