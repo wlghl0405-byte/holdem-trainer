@@ -138,6 +138,24 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .verdict.go{background:rgba(62,158,110,.15);color:#7FD3A6}
 .verdict.no{background:rgba(192,72,60,.15);color:#E29A92}
 .verdict.mid{background:rgba(75,132,216,.14);color:#9FC0F0}
+.advhand{display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap}
+.advhand .lb{font-size:15px;font-weight:800}
+.advhand .nk{font-size:12px;color:var(--ink-2);font-weight:650}
+.tier{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;letter-spacing:.02em}
+.tier.S{background:var(--gold);color:#20180A}
+.tier.A{background:#3E9E6E;color:#04160D}
+.tier.B{background:#4B84D8;color:#04101F}
+.tier.C{background:#4A5654;color:#DCE3E1}
+.tier.D{background:#8C382F;color:#FFE6E2}
+.why{font-size:12px;line-height:1.65;color:var(--ink-2);margin:0 0 9px}
+.why b{color:var(--ink);font-weight:700}
+.why+.why{margin-top:-4px}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px}
+.tag{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(192,72,60,.16);color:#E8A79F}
+.tag.ok{background:rgba(62,158,110,.16);color:#8FD9B2}
+.beatline{font-size:12px;color:var(--ink-2);line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.beatline b{color:#E8A79F}
+.beatline .safe{color:#8FD9B2}
 .outlook{margin-top:9px}
 .olrow{display:grid;grid-template-columns:78px 1fr 42px;gap:7px;align-items:center;font-size:11.5px;padding:2px 0}
 .olrow .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
@@ -185,51 +203,70 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .mtabs button{flex:1;min-height:50px;font-size:12px;font-weight:700;color:var(--mute)}
 .mtabs button.on{color:var(--gold)}
 
+/* ── 모바일: 스크롤 없이 한 화면에 정확히 맞춘다 ── */
 @media (max-width:1080px){
-  body{overflow:auto}
-  main{grid-template-columns:1fr}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  .app{height:100dvh;height:100svh}
+  main{grid-template-columns:1fr;min-height:0}
   .mtabs{display:flex}
-  .stage{padding:10px 10px 0}
-  header{padding:8px 12px;gap:8px}
+  /* 상태바(시계·배터리) 영역 확보 */
+  header{padding:calc(7px + env(safe-area-inset-top,0)) 12px 7px;gap:8px}
   header h1{font-size:14px}
   .hstat{gap:10px;font-size:11.5px}
   .hstat span:nth-child(2){display:none}
   .tbtn{padding:6px 10px;font-size:11.5px}
+  /* 테이블이 남는 공간을 전부 차지하고, 그 아래 요소는 고정 높이 */
+  .stage{display:flex;flex-direction:column;min-height:0;
+    padding:8px 10px calc(52px + env(safe-area-inset-bottom,0))}
+  .tablewrap{flex:1 1 auto;min-height:0}
+  .felt{width:100%;height:100%;max-width:none;aspect-ratio:auto;border-radius:50%;border-width:9px}
+  .hero,.msg,.actions{flex:0 0 auto}
   /* 사이드바를 하단 시트로 */
-  aside{position:fixed;left:0;right:0;bottom:0;height:64vh;z-index:45;
+  aside{position:fixed;left:0;right:0;bottom:0;height:66dvh;z-index:45;
     border-left:none;border-top:1px solid var(--line-2);border-radius:18px 18px 0 0;
     transform:translateY(102%);transition:transform .26s cubic-bezier(.2,.8,.2,1);
-    padding:16px 14px calc(66px + env(safe-area-inset-bottom,0));box-shadow:0 -14px 40px rgba(0,0,0,.5)}
+    padding:16px 14px calc(64px + env(safe-area-inset-bottom,0));box-shadow:0 -14px 40px rgba(0,0,0,.5)}
   aside.open{transform:none}
-  .app{height:auto;min-height:100%}
-  .stage{padding-bottom:60px}
 }
-/* 폰 세로: 테이블을 세로로 키우고 카드·좌석을 축소 */
+/* 폰 세로: 좌석·카드·액션을 화면에 맞게 압축 */
 @media (max-width:720px){
-  .felt{aspect-ratio:1/1;border-width:9px;border-radius:44% / 46%}
-  .center{width:92%;top:46%}
-  .pot{font-size:19px}
-  .board{gap:4px;min-height:60px}
-  .card{width:40px;height:57px;border-radius:6px}
-  .card .rk{font-size:15px}.card .st{font-size:14px}
-  .card.sm{width:27px;height:38px}
-  .card.sm .rk{font-size:10.5px}.card.sm .st{font-size:10px}
-  .seat{width:82px}
-  .seat .cards{min-height:38px;gap:3px}
+  .center{width:78%;top:48%}
+  .potline{font-size:10.5px}
+  .pot{font-size:19px;margin-top:0}
+  .board{gap:4px;min-height:0;margin-top:7px}
+  .stagetag{margin-top:5px;font-size:10.5px}
+  .card{width:38px;height:53px;border-radius:6px}
+  .card .rk{font-size:14px}.card .st{font-size:13px}
+  .card.sm{width:23px;height:32px;border-radius:4px}
+  .card.sm .rk{font-size:9px}.card.sm .st{font-size:8.5px}
+  /* 좌석: 이름표 옆에 카드를 붙여 폭을 줄이고 테이블 안쪽에 배치 */
+  .seat{width:66px}
+  .seat .cards{min-height:0;gap:2px;margin-bottom:3px}
   .seat .plate{padding:3px 5px;border-radius:8px}
-  .seat .nm{font-size:10.5px}.seat .ch{font-size:11px}
-  .seat .act{font-size:10px;padding:1px 6px;bottom:-18px}
-  .seat .bet{font-size:10.5px;bottom:-37px}
-  .dbtn{width:16px;height:16px;font-size:9px}
-  .hero{gap:12px;padding:10px 0 6px}
-  .hero .ch{font-size:17px}
+  .seat .nm{font-size:10px}.seat .ch{font-size:10.5px}
+  .seat .act{font-size:9.5px;padding:1px 6px;bottom:-16px}
+  .seat .bet{font-size:10px;bottom:-32px}
+  .dbtn{width:15px;height:15px;font-size:8.5px;top:-4px;right:2px}
+  .hero{gap:12px;padding:8px 0 4px}
   .hero .cards{gap:5px}
-  .actions{gap:7px;padding:8px 0 12px}
-  .abtn{min-width:0;flex:1 1 30%;padding:13px 10px;font-size:14px}
-  .raisebox{flex:1 1 100%;justify-content:space-between}
+  .hero .nm{font-size:12px}
+  .hero .ch{font-size:17px}
+  .hero .made{font-size:11.5px}
+  .hero.turn .nm::after{font-size:9.5px;padding:1px 6px}
+  .msg{font-size:12px;padding:3px 0}
+  /* 액션: 슬라이더 1줄 + 버튼 1줄, 총 2줄로 고정 */
+  .actions{gap:6px;padding:4px 0 6px;min-height:0}
+  .raisebox{order:1;flex:1 1 100%;justify-content:space-between;padding:5px 10px;gap:8px}
   .raisebox input[type=range]{flex:1;width:auto}
-  .msg{font-size:12.5px}
+  .raisebox .amt{font-size:13px;min-width:56px}
+  .abtn{order:2;min-width:0;flex:1 1 0;padding:13px 6px;font-size:14px;border-radius:10px}
   .modal{padding:18px;border-radius:16px}
+  .numin{padding:9px 11px;font-size:14px}
+}
+/* 세로로 아주 짧은 화면(가로 모드 등) 대비 */
+@media (max-width:1080px) and (max-height:560px){
+  .hero .ch{font-size:15px} .hero .made{display:none}
+  .actions{padding:2px 0 4px} .abtn{padding:10px 6px}
 }
 </style>
 </head>
@@ -630,9 +667,13 @@ function render() {
   const felt = $('felt');
   const opps = G.players.filter((p) => p.id !== 0);
   const n = opps.length;
+  // 좌석은 펠트 안쪽에 배치한다. 반지름이 너무 크면 카드가 테이블 밖으로 나간다.
+  const mob = window.innerWidth <= 720;
+  const RX = mob ? 40 : 45, RY = mob ? 33 : 40, CY = mob ? 46 : 48;
+  const SPAN = mob ? 196 : 200, START = mob ? 172 : 170;
   opps.forEach((p, k) => {
-    const t = (170 + ((k + 1) * 200) / (n + 1)) * Math.PI / 180;
-    const x = 50 + 46 * Math.cos(t), y = 47 + 52 * Math.sin(t);
+    const t = (START + ((k + 1) * SPAN) / (n + 1)) * Math.PI / 180;
+    const x = 50 + RX * Math.cos(t), y = CY + RY * Math.sin(t);
     const idx = G.players.indexOf(p);
     const d = document.createElement('div');
     d.className = 'seat' + (idx === G.toAct ? ' turn' : '') + (p.folded ? ' folded' : '') + (p.out ? ' out' : '');
@@ -739,38 +780,128 @@ function renderAdvisor() {
   const left = 5 - G.board.length;
   const outP = ou.n ? (left >= 2 ? Math.min(0.95, ou.n * 4 / 100) : ou.n * 2 / 100) : 0;
 
+  let head = '', why = '';
+  if (G.board.length === 0) {
+    /* ── 프리플랍: 시작 핸드 해설 ── */
+    const hc = HE.handClass(me.hole);
+    const eq1 = HE.equity(me.hole, [], 1, 1800);
+    head = '<div class="advhand"><span class="lb">' + hc.label + '</span>' +
+      '<span class="tier ' + hc.tier + '">' + TIER_LABEL[hc.tier] + '</span>' +
+      '<span class="nk">' + nickname(hc) + '</span></div>';
+    why = preflopWhy(hc, eq1, opp, eq);
+  } else {
+    /* ── 플랍 이후: 지금 손의 강도와 위험 ── */
+    const bh = HE.beatingHands(me.hole, G.board);
+    const tex = HE.boardTexture(G.board);
+    const ratio = bh ? bh.beat / bh.total : 0;
+    const strength = ratio < 0.01 ? ['사실상 최강', 'S'] : ratio < 0.05 ? ['매우 강함', 'A']
+      : ratio < 0.15 ? ['강한 편', 'B'] : ratio < 0.35 ? ['중간', 'C'] : ['약함', 'D'];
+    head = '<div class="advhand"><span class="lb">' + HE.handName(bf.score) + '</span>' +
+      '<span class="tier ' + strength[1] + '">' + strength[0] + '</span></div>';
+    why = postflopWhy(bf, bh, tex, ou, outP, left, opp);
+  }
+
   let rows = '';
   const row = (k, v) => { rows += '<div class="advrow"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; };
-  row('현재 족보', HE.handName(bf.score));
   row('승률 (' + opp + '명 상대)', (eq * 100).toFixed(1) + '<small>%</small>');
-  if (G.board.length < 5) {
-    row('아웃츠', ou.n + '<small>장</small>' + (ou.n ? ' · 개선 ' + (outP * 100).toFixed(0) + '<small>%</small>' : ''));
-  }
-  if (toCall > 0) row('팟오즈', (potOdds * 100).toFixed(1) + '<small>% 필요</small>');
+  if (G.board.length < 5 && ou.n) row('아웃츠', ou.n + '<small>장</small> · 개선 ' + (outP * 100).toFixed(0) + '<small>%</small>');
+  if (toCall > 0) row('팟오즈', (potOdds * 100).toFixed(1) + '<small>% 이상 필요</small>');
 
   let verdict = '', vc = 'mid';
   if (toCall === 0) {
     if (eq > 0.62) { verdict = '승률이 높습니다. 벳으로 팟을 키울 자리입니다.'; vc = 'go'; }
-    else { verdict = '무료로 다음 카드를 봅니다. 체크가 무난합니다.'; vc = 'mid'; }
-  } else if (eq >= potOdds + 0.12) { verdict = '승률이 팟오즈를 크게 넘습니다. 콜 또는 레이즈가 유리합니다.'; vc = 'go'; }
-  else if (eq >= potOdds) { verdict = '승률이 팟오즈보다 조금 높습니다. 콜 가치가 있습니다.'; vc = 'mid'; }
-  else { verdict = '승률이 팟오즈에 못 미칩니다. 폴드가 손실을 줄입니다.'; vc = 'no'; }
+    else { verdict = '공짜로 다음 카드를 봅니다. 체크가 무난합니다.'; vc = 'mid'; }
+  } else if (eq >= potOdds + 0.12) { verdict = '승률 ' + (eq * 100).toFixed(0) + '%가 필요 승률 ' + (potOdds * 100).toFixed(0) + '%를 크게 넘습니다. 콜 또는 레이즈가 유리합니다.'; vc = 'go'; }
+  else if (eq >= potOdds) { verdict = '승률이 필요 승률보다 조금 높습니다. 콜 가치가 있습니다.'; vc = 'mid'; }
+  else { verdict = '승률 ' + (eq * 100).toFixed(0) + '%가 필요 승률 ' + (potOdds * 100).toFixed(0) + '%에 못 미칩니다. 폴드가 손실을 줄입니다.'; vc = 'no'; }
 
-  // 앞으로 만들 수 있는 족보
   let ol = '';
   if (G.board.length >= 3 && G.board.length < 5) {
     const o = HE.outlook(me.hole, G.board);
     const top = o.dist.filter((x) => x.p >= 0.005).slice(0, 5);
     const mx = Math.max(...top.map((x) => x.p), 0.001);
-    ol = '<div class="outlook"><div class="k" style="font-size:11.5px;color:var(--ink-2);margin-bottom:5px">완성 가능 족보 (리버까지)</div>' +
+    ol = '<div class="outlook"><div style="font-size:11.5px;color:var(--ink-2);margin-bottom:5px">리버까지 완성 가능한 족보</div>' +
       top.map((x) => '<div class="olrow"><span>' + HE.CATS[x.cat].ko + '</span>' +
         '<span class="bar"><i style="width:' + (x.p / mx * 100) + '%"></i></span>' +
         '<span class="p">' + (x.p * 100).toFixed(1) + '%</span></div>').join('') + '</div>';
   }
 
-  box.innerHTML = rows +
+  box.innerHTML = head + why + rows +
     '<div class="meter"><i style="width:' + (eq * 100).toFixed(1) + '%"></i></div>' +
     '<div class="verdict ' + vc + '">' + verdict + '</div>' + ol;
+}
+
+const TIER_LABEL = { S: '최상위', A: '강함', B: '괜찮음', C: '보통', D: '약함' };
+const RK = HE.rankName;
+
+function nickname(hc) {
+  if (hc.pair) return '포켓 ' + (hc.hi === 14 ? '에이스' : hc.hi === 13 ? '킹' : hc.hi === 12 ? '퀸' : hc.hi === 11 ? '잭' : RK(hc.hi));
+  if (hc.hi === 14 && hc.lo === 13) return '빅 슬릭';
+  if (hc.suited && hc.gap === 1) return '수티드 커넥터';
+  if (hc.suited && hc.hi === 14) return '수티드 에이스';
+  if (hc.suited) return '수티드';
+  if (hc.hi >= 12 && hc.lo >= 10) return '브로드웨이';
+  return '오프수트';
+}
+
+/** 프리플랍 해설: 왜 강한지, 무엇에 지는지, 무엇을 조심할지 */
+function preflopWhy(hc, eq1, opp, eqNow) {
+  const p = [];
+  const pct = (x) => (x * 100).toFixed(0) + '%';
+  if (hc.pair && hc.hi === 14) {
+    p.push('169개 시작 핸드 중 <b>1위</b>입니다. 프리플랍에서 이 손을 이기는 시작 핸드는 <b>없습니다</b>.');
+    p.push('다만 상대가 많아질수록 승률이 빠르게 떨어집니다. 1명 상대 ' + pct(eq1) + ', 지금 ' + opp + '명 상대로는 ' + pct(eqNow) + '. <b>레이즈로 상대 수를 줄이는 것</b>이 정석입니다.');
+    p.push('지는 경우는 대부분 플랍 이후입니다. 상대가 <b>셋(트리플)</b>을 만들거나 보드에 스트레이트·플러시가 깔릴 때 조심하세요.');
+  } else if (hc.pair && hc.hi === 13) {
+    p.push('AA 다음으로 강한 손입니다. 프리플랍에서 지는 상대는 <b>AA뿐</b>이며, 그 확률은 매우 낮습니다.');
+    p.push('보드에 <b>A가 깔리면</b> 상대의 에이스 페어에 밀릴 수 있으니 그때부터는 신중하게 진행하세요.');
+  } else if (hc.pair && hc.hi >= 11) {
+    p.push('상위 포켓페어로 충분히 강합니다. 프리플랍에서 앞서는 손은 <b>더 높은 포켓페어</b>뿐입니다.');
+    p.push('보드에 <b>' + (hc.hi === 12 ? 'A나 K' : 'A·K·Q') + '가 깔리면</b> 상대의 오버카드 페어에 역전될 수 있습니다.');
+  } else if (hc.pair) {
+    p.push('작은 포켓페어입니다. 그 자체로는 약하지만 <b>플랍에서 셋이 되면</b> 매우 강해집니다(확률 약 12%).');
+    p.push('싸게 플랍을 보고 셋이 안 되면 미련 없이 접는 전략이 기본입니다.');
+  } else if (hc.hi === 14 && hc.lo === 13) {
+    p.push('페어가 아닌 손 중 <b>가장 강합니다</b>. 탑페어가 되면 킥커 싸움에서 거의 지지 않습니다.' + (hc.suited ? ' 수티드라 <b>넛 플러시</b> 가능성까지 있습니다.' : ''));
+    p.push('단점은 <b>맞지 않으면 그냥 A 하이</b>라는 점입니다. 플랍에서 미스했다면 과감히 접을 줄 알아야 합니다.');
+  } else if (hc.hi === 14) {
+    p.push(hc.suited ? '수티드 에이스입니다. <b>플러시가 되면 최상위(넛)</b>가 됩니다.' : '에이스를 든 손입니다. 페어가 되면 강하지만 <b>킥커가 낮아</b> 같은 에이스끼리 붙으면 밀립니다.');
+    p.push('낮은 카드로 페어를 맞췄을 때 무리하지 않는 것이 중요합니다.');
+  } else if (hc.suited && hc.gap <= 2) {
+    p.push('수티드 커넥터입니다. 당장은 약해 보여도 <b>스트레이트·플러시 잠재력</b>이 큽니다.');
+    p.push('여러 명이 들어온 큰 팟에서 값싸게 볼 때 가치가 높고, 완성되지 않으면 쉽게 접어야 합니다.');
+  } else if (hc.hi >= 12 && hc.lo >= 10) {
+    p.push('브로드웨이 카드 조합입니다. 탑페어를 만들면 쓸 만하지만 <b>킥커 문제</b>로 역전당하기 쉽습니다.');
+  } else {
+    p.push('<b>가장 약한 축</b>의 시작 핸드입니다. 1명 상대 승률도 ' + pct(eq1) + ' 수준입니다.');
+    p.push('장기적으로는 <b>프리플랍에서 접는 것</b>이 칩을 아끼는 길입니다.');
+  }
+  return p.map((t) => '<p class="why">' + t + '</p>').join('');
+}
+
+/** 플랍 이후 해설: 나를 이기는 조합과 보드 위험 */
+function postflopWhy(bf, bh, tex, ou, outP, left, opp) {
+  const p = [];
+  if (bh) {
+    const pctBeat = bh.beat / bh.total * 100;
+    const catNames = Object.entries(bh.cats).sort((a, b) => b[1] - a[1]).slice(0, 3)
+      .map(([c]) => HE.CATS[c].ko);
+    if (bh.beat === 0) {
+      p.push('현재 이 보드에서 <b class="safe">나를 이길 수 있는 조합이 없습니다</b>. 최대한 팟을 키울 자리입니다.');
+    } else {
+      p.push('상대가 가질 수 있는 <b>' + fmt(bh.total) + '개 조합 중 ' + fmt(bh.beat) + '개(' + pctBeat.toFixed(1) + '%)</b>가 나를 이깁니다.' +
+        (catNames.length ? ' 주로 <b>' + catNames.join(', ') + '</b>입니다.' : ''));
+    }
+    p.push('단, 이는 <b>상대 1명 기준</b>입니다. 상대가 ' + opp + '명이면 그중 누군가 그 조합을 들고 있을 가능성이 그만큼 커집니다.');
+  }
+  if (ou.n && left > 0) {
+    p.push('아직 <b>' + ou.n + '장</b>이 남아 있어 ' + (left >= 2 ? '리버까지 약 ' : '리버에서 약 ') +
+      '<b>' + (outP * 100).toFixed(0) + '%</b> 확률로 지금보다 좋은 족보가 됩니다. (아웃츠 × ' + (left >= 2 ? 4 : 2) + '로 어림잡는 방법)');
+  }
+  let tags = '';
+  if (tex.notes.length) tags = '<div class="tags">' + tex.notes.map((n) => '<span class="tag">' + n + '</span>').join('') + '</div>';
+  else tags = '<div class="tags"><span class="tag ok">위험 요소 적은 보드</span></div>';
+  return p.map((t) => '<p class="why">' + t + '</p>').join('') + tags;
 }
 
 /* ───────── 족보표 ───────── */

@@ -115,5 +115,45 @@ ok(H.remainingDeck(P('As Ks')).length === 50, '남은 카드 50장');
   ok(pots.length === 1 && pots[0].amt === 400, '단일 팟 400');
 }
 
+/* 11. 나를 이기는 조합 계산 */
+{
+  // 넛(로열)이면 이기는 조합이 0
+  const b1 = H.beatingHands(P('As Ks'), P('Qs Js Ts'));
+  ok(b1.beat === 0, `로열 완성 시 나를 이기는 조합 0 (실제 ${b1.beat})`);
+  ok(b1.total === (47 * 46) / 2, `조합 총수 ${b1.total} (기대 1081)`);
+
+  // 최악: 하이카드일 때는 다수에게 진다
+  const b2 = H.beatingHands(P('7h 2d'), P('As Kd 9c'));
+  ok(b2.beat / b2.total > 0.5, `약한 손은 절반 이상에게 짐 (${(b2.beat / b2.total * 100).toFixed(0)}%)`);
+
+  // 보드에 셋이 깔린 경우 내 탑페어는 여러 조합에 진다
+  const b3 = H.beatingHands(P('Ah Kd'), P('Ac 7h 2s'));
+  ok(b3.beat > 0 && b3.beat < b3.total, `탑페어: 이기는 조합 일부 존재 (${b3.beat}/${b3.total})`);
+  ok(H.catOf(b3.myScore) === 1, '탑페어 판정');
+}
+
+/* 12. 보드 위험 요소 */
+{
+  const t1 = H.boardTexture(P('As Ks Qs'));
+  ok(t1.flush === 3 && t1.straight >= 3, '모노톤+브로드웨이 보드 감지');
+  const t2 = H.boardTexture(P('7h 7d 2c'));
+  ok(t2.paired === true, '페어드 보드 감지');
+  const t3 = H.boardTexture(P('9h 8d 7c'));
+  ok(t3.straight >= 3, '스트레이트 근접 보드 감지');
+  const t4 = H.boardTexture(P('2h 7d Kc'));
+  ok(!t4.paired && t4.flush === 1 && t4.straight < 3, '무난한 레인보우 보드');
+}
+
+/* 13. 프리플랍 핸드 분류 */
+{
+  ok(H.handClass(P('As Ah')).label === 'AA' && H.handClass(P('As Ah')).tier === 'S', 'AA = S티어');
+  ok(H.handClass(P('Ks Kh')).tier === 'S', 'KK = S티어');
+  ok(H.handClass(P('As Ks')).label === 'AKs' && H.handClass(P('As Ks')).tier === 'S', 'AKs = S티어');
+  ok(H.handClass(P('Ah Kd')).label === 'AKo', 'AKo 라벨');
+  ok(H.handClass(P('7h 2d')).tier === 'D', '72o = D티어(최약)');
+  ok(H.handClass(P('9s 8s')).suited === true, '수티드 판정');
+  ok(H.handClass(P('5h 5d')).pair === true, '포켓페어 판정');
+}
+
 console.log(`\n통과 ${pass} / 실패 ${fail}`);
 process.exit(fail ? 1 : 0);

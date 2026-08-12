@@ -264,6 +264,84 @@
     return { n: hit.length, cards: hit };
   }
 
+  /**
+   * 지금 이 보드에서 상대가 가질 수 있는 2장 조합 중 나를 이기는 비율.
+   * 남은 카드로 만들 수 있는 모든 조합(보통 990개)을 전수 계산한다.
+   * 반환: {total, beat, tie, cats:{카테고리:건수}}
+   */
+  function beatingHands(hole, board) {
+    if (board.length < 3) return null;
+    const my = evaluate(hole.concat(board));
+    const deck = remainingDeck(hole.concat(board));
+    const buf = new Array(2 + board.length);
+    for (let i = 0; i < board.length; i++) buf[2 + i] = board[i];
+    const cats = {};
+    let total = 0, beat = 0, tie = 0;
+    for (let i = 0; i < deck.length; i++) {
+      buf[0] = deck[i];
+      for (let j = i + 1; j < deck.length; j++) {
+        buf[1] = deck[j];
+        const os = evaluate(buf);
+        total++;
+        if (os > my) { beat++; const c = catOf(os); cats[c] = (cats[c] || 0) + 1; }
+        else if (os === my) tie++;
+      }
+    }
+    return { total, beat, tie, cats, myScore: my };
+  }
+
+  /** 보드 위험 요소 (플러시/스트레이트/페어 가능성) */
+  function boardTexture(board) {
+    if (!board.length) return { flush: 0, paired: false, trips: false, straight: 0, notes: [] };
+    const suit = [0, 0, 0, 0], rank = new Array(15).fill(0);
+    board.forEach((c) => { suit[c.s]++; rank[c.r]++; });
+    const flush = Math.max.apply(null, suit);
+    const paired = rank.some((n) => n >= 2);
+    const trips = rank.some((n) => n >= 3);
+    // 스트레이트 근접도: 5칸 창 안에 서로 다른 랭크가 몇 개 있는지 (A는 1로도 계산)
+    const present = new Array(15).fill(false);
+    board.forEach((c) => { present[c.r] = true; if (c.r === 14) present[1] = true; });
+    let straight = 0;
+    for (let lo = 1; lo <= 10; lo++) {
+      let n = 0;
+      for (let k = 0; k < 5; k++) if (present[lo + k]) n++;
+      if (n > straight) straight = n;
+    }
+    const notes = [];
+    if (flush >= 4) notes.push('플러시 완성 가능성 높음');
+    else if (flush === 3) notes.push('플러시 드로우 경계');
+    if (trips) notes.push('보드 트리플, 포카드·풀하우스 주의');
+    else if (paired) notes.push('보드 페어, 풀하우스 주의');
+    if (straight >= 4) notes.push('스트레이트 완성 가능성 높음');
+    else if (straight === 3 && board.length >= 3) notes.push('스트레이트 드로우 경계');
+    return { flush, paired, trips, straight, notes };
+  }
+
+  /** 프리플랍 스타팅 핸드 분류 */
+  function handClass(hole) {
+    const a = hole[0].r >= hole[1].r ? hole[0] : hole[1];
+    const b = hole[0].r >= hole[1].r ? hole[1] : hole[0];
+    const pair = a.r === b.r, suited = a.s === b.s;
+    const label = pair ? rankName(a.r) + rankName(b.r)
+      : rankName(a.r) + rankName(b.r) + (suited ? 's' : 'o');
+    const gap = a.r - b.r;
+    let tier;
+    if (pair && a.r >= 12) tier = 'S';
+    else if (a.r === 14 && b.r === 13 && suited) tier = 'S';
+    else if (pair && a.r >= 9) tier = 'A';
+    else if (a.r === 14 && b.r >= 12) tier = 'A';
+    else if (suited && a.r === 14 && b.r >= 11) tier = 'A';
+    else if (suited && a.r >= 13 && b.r >= 12) tier = 'A';
+    else if (pair) tier = 'B';
+    else if (a.r === 14) tier = suited ? 'B' : (b.r >= 10 ? 'B' : 'C');
+    else if (suited && gap <= 2 && b.r >= 7) tier = 'B';
+    else if (a.r >= 12 && b.r >= 10) tier = 'B';
+    else if (suited && gap <= 3) tier = 'C';
+    else if (gap <= 2 && b.r >= 8) tier = 'C';
+    else tier = 'D';
+    return { label, pair, suited, gap, hi: a.r, lo: b.r, tier };
+  }
+
   /** 사이드팟 구성: [{amt, eligible:[playerIndex]}] */
   function buildPots(players) {
     const levels = [...new Set(players.filter((p) => !p.folded && p.committed > 0).map((p) => p.committed))]
@@ -290,6 +368,7 @@
   const API = {
     SUIT_CH, CATS, newDeck, shuffle, evaluate, bestFive, catOf, catInfo, handName,
     rankName, cardName, cardId, remainingDeck, equity, outlook, outs, buildPots, straightHigh, score,
+    beatingHands, boardTexture, handClass,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.HE = API;
