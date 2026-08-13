@@ -470,8 +470,12 @@ const G = {
   players: [], deck: [], board: [], stage: 'idle', btn: 0, toAct: -1,
   maxBet: 0, minRaise: 0, handNo: 0, log: [], showAll: false, busy: false,
 };
-// 상대 이름은 앞에서부터 순서대로 배정된다 (상대 수를 줄여도 앞의 이름은 항상 등장)
-const NAMES = ['해성', '병욱', '지석', '민서', '태현', '수아', '건우', '예린'];
+// 상대 이름 풀. 게임을 시작할 때마다 섞어서 필요한 수만큼 뽑는다.
+const NAMES = [
+  '해성', '병욱', '지석', '민서', '태현', '수아', '건우', '예린', '도윤', '지호',
+  '서준', '하은', '시우', '유진', '준영', '다인', '성민', '채원', '재훈', '소율',
+  '동현', '나은', '승우', '지안', '현우', '미르', '태윤', '은지', '우진', '세림',
+];
 
 /* ───────── 카드 렌더 ───────── */
 function cardEl(c, cls) {
@@ -488,8 +492,13 @@ function ph() { const d = document.createElement('div'); d.className = 'card ph'
 function newGame() {
   G.players = [];
   G.players.push({ id: 0, name: '나', human: true, stack: CFG.stack });
+  const pool = NAMES.slice();
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
   for (let i = 0; i < CFG.opp; i++) {
-    G.players.push({ id: i + 1, name: NAMES[i], human: false, stack: CFG.stack });
+    G.players.push({ id: i + 1, name: pool[i], human: false, stack: CFG.stack });
   }
   G.players.forEach((p) => { p.hole = []; p.bet = 0; p.committed = 0; p.folded = false; p.allIn = false; p.acted = false; p.out = false; p.last = ''; });
   G.handNo = 0; G.btn = G.players.length - 1; G.log = [];
