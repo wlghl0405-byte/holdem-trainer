@@ -1,0 +1,13 @@
+# Render 무료 웹 서비스 설정 (https://render.com)
+# 대시보드 → New → Blueprint → 이 저장소 선택하면 자동으로 읽힌다.
+services:
+  - type: web
+    name: holdem-trainer
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

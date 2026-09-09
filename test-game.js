@@ -6,6 +6,7 @@
 const fs = require('fs');
 const vm = require('vm');
 const HE = require('./engine.js');
+const TB = require('./table.js');
 
 /* ── 최소 DOM 스텁 ── */
 function mkEl() {
@@ -47,7 +48,7 @@ if (!m) { console.log('스크립트 추출 실패'); process.exit(1); }
 const src = m[1] + '\n;globalThis.__api = { G, CFG, newGame, startHand, doAction, potTotal, inHand, canAct, endHand };';
 
 const window = { innerWidth: 1440, addEventListener() {} };
-const ctx = { HE, document, window, setTimeout: setTimeout_, clearTimeout: () => {}, Math, console, Set, Map, Array, Object, JSON, Number, String, isNaN, globalThis: null };
+const ctx = { HE, TB, document, window, setTimeout: setTimeout_, clearTimeout: () => {}, Math, console, Set, Map, Array, Object, JSON, Number, String, isNaN, globalThis: null };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(src, ctx, { filename: 'game.js' });

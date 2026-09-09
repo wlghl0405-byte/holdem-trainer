@@ -1,0 +1,14 @@
+{
+  "name": "홀덤 트레이너",
+  "short_name": "홀덤",
+  "description": "친구와 온라인으로 즐기는 텍사스 홀덤 학습 게임",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B0E0D",
+  "theme_color": "#0B0E0D",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

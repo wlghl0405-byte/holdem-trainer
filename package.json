@@ -3,6 +3,18 @@
   "version": "1.0.0",
   "description": "텍사스 홀덤 학습용 로컬 게임",
   "main": "main.js",
-  "scripts": { "start": "electron .", "test": "node test-engine.js && node test-game.js" },
-  "devDependencies": { "electron": "^32.0.0" }
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-engine.js && node test-game.js && node test-net.js",
+    "electron": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^32.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

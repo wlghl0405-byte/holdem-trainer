@@ -9,16 +9,17 @@ const path = require('path');
 const dir = __dirname;
 const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
 const engine = fs.readFileSync(path.join(dir, 'engine.js'), 'utf8');
+const table = fs.readFileSync(path.join(dir, 'table.js'), 'utf8');
 
 if (!html.includes('<script src="engine.js"></script>')) {
   console.error('engine.js 참조를 찾지 못했습니다. index.html 구조를 확인하세요.');
   process.exit(1);
 }
 
-const out = html.replace(
-  '<script src="engine.js"></script>',
-  '<script>\n/* engine.js 인라인 (build-portable.js 자동 생성) */\n' + engine + '\n</script>'
-);
+const out = html
+  .replace('<script src="engine.js"></script>', '<script>\n/* engine.js 인라인 (build-portable.js 자동 생성) */\n' + engine + '\n</script>')
+  .replace('<script src="table.js"></script>', '<script>\n/* table.js 인라인 (build-portable.js 자동 생성) */\n' + table + '\n</script>')
+  .replace('<link rel="manifest" href="manifest.webmanifest">\n', '');
 
 const file = path.join(dir, '홀덤트레이너.html');
 fs.writeFileSync(file, out);
