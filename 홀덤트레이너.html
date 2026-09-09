@@ -358,6 +358,9 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .mtab button{flex:1;padding:8px;border-radius:7px;font-size:13px;font-weight:650;color:var(--ink-2)}
 .mtab button.on{background:var(--gold);color:#20180A}
 .modal .netonly{display:none}.modal.online .netonly{display:block}.modal.online .localonly{display:none}
+.modal.online .netcfg{display:none}.modal.online.hostcfg .netcfg{display:block}
+.modal{min-width:0}
+.netrow{flex-wrap:wrap}.netrow .half{min-width:120px}.joinbox .numin{min-width:0}
 .netrow{display:flex;gap:8px;align-items:stretch;margin-top:4px}
 .netrow .half{flex:1;margin:0;padding:12px 8px}
 .joinbox{flex:1.2;display:flex;gap:6px}
@@ -453,38 +456,6 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
     <div class="mtab"><button class="on" data-mode="local" id="tabLocal">혼자 연습</button><button data-mode="net" id="tabNet">친구와 온라인</button></div>
     <p class="sub localonly">설정을 바꾸면 새 게임으로 시작합니다.</p>
     <p class="sub netonly">방을 만들고 코드나 링크를 친구에게 보내세요. 서로 다른 곳에서도 됩니다.</p>
-    <div class="fld localonly">
-      <label>상대 수</label>
-      <div class="opts" id="optOpp"></div>
-    </div>
-    <div class="fld">
-      <label>난이도</label>
-      <div class="opts" id="optDiff"></div>
-    </div>
-    <div class="fld">
-      <label>어드바이저</label>
-      <div class="opts" id="optAdv"></div>
-    </div>
-    <div class="fld">
-      <label>진행 속도</label>
-      <div class="opts" id="optSpeed"></div>
-    </div>
-    <div class="fld netonly">
-      <label>차례 제한 시간</label>
-      <div class="opts" id="optTurn"></div>
-      <p class="hint">시간이 지나면 자동으로 체크 또는 폴드됩니다. 게임이 늘어지지 않게 합니다.</p>
-    </div>
-    <div class="fld">
-      <label>시작 칩</label>
-      <div class="opts" id="optStack"></div>
-      <input class="numin num" id="inStack" type="number" min="100" step="1000" inputmode="numeric">
-    </div>
-    <div class="fld">
-      <label>최소 베팅 (빅블라인드)</label>
-      <div class="opts" id="optBB"></div>
-      <input class="numin num" id="inBB" type="number" min="2" step="10" inputmode="numeric">
-      <p class="hint" id="bbHint"></p>
-    </div>
     <div class="netonly" id="netPanel">
       <div id="netJoinBox">
         <div class="fld"><label>내 이름</label><input class="numin" id="inName" type="text" maxlength="12" placeholder="친구에게 보일 이름"></div>
@@ -496,6 +467,38 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
       </div>
       <div id="lobby" style="display:none"></div>
       <p class="hint" id="netStatus"></p>
+    </div>
+    <div class="fld localonly">
+      <label>상대 수</label>
+      <div class="opts" id="optOpp"></div>
+    </div>
+    <div class="fld netcfg">
+      <label>난이도</label>
+      <div class="opts" id="optDiff"></div>
+    </div>
+    <div class="fld">
+      <label>어드바이저</label>
+      <div class="opts" id="optAdv"></div>
+    </div>
+    <div class="fld netcfg">
+      <label>진행 속도</label>
+      <div class="opts" id="optSpeed"></div>
+    </div>
+    <div class="fld netonly netcfg">
+      <label>차례 제한 시간</label>
+      <div class="opts" id="optTurn"></div>
+      <p class="hint">시간이 지나면 자동으로 체크 또는 폴드됩니다. 게임이 늘어지지 않게 합니다.</p>
+    </div>
+    <div class="fld netcfg">
+      <label>시작 칩</label>
+      <div class="opts" id="optStack"></div>
+      <input class="numin num" id="inStack" type="number" min="100" step="1000" inputmode="numeric">
+    </div>
+    <div class="fld netcfg">
+      <label>최소 베팅 (빅블라인드)</label>
+      <div class="opts" id="optBB"></div>
+      <input class="numin num" id="inBB" type="number" min="2" step="10" inputmode="numeric">
+      <p class="hint" id="bbHint"></p>
     </div>
     <button class="start localonly" id="btnStart">게임 시작</button>
     <p class="hint">어드바이저는 승률·아웃츠·팟오즈를 계산해 콜 가치를 알려줍니다. 규칙에 익숙해지면 끄고 연습하세요.</p>
@@ -1455,7 +1458,7 @@ function gameOver() {
  * 서버(server.js)가 덱과 진행을 쥔다. 브라우저는 자기 좌석 기준 화면 상태(view)를 받아 그리고,
  * 액션만 보낸다. 방 코드로 입장하며, 토큰을 저장해 두어 새로고침해도 자리를 잃지 않는다.
  */
-const NET = { ws: null, url: '', code: '', seat: -1, host: false, token: '', name: '', lobby: null, retry: null, wantClose: false };
+const NET = { ws: null, url: '', code: '', seat: -1, host: false, token: '', name: '', lobby: null, retry: null, wantClose: false, seated: false };
 const store = {
   get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
@@ -1492,7 +1495,7 @@ function netLeave() {
   NET.wantClose = true; clearTimeout(NET.retry);
   netSend({ t: 'leave' });
   if (NET.ws) { try { NET.ws.close(); } catch (e) {} }
-  NET.ws = null; NET.code = ''; NET.seat = -1; NET.host = false; NET.lobby = null;
+  NET.ws = null; NET.code = ''; NET.seat = -1; NET.host = false; NET.lobby = null; NET.seated = false;
   store.set('ht.room', ''); store.set('ht.token', '');
   MODE.net = false; G = T;
   renderLobby();
@@ -1509,7 +1512,7 @@ function netHandle(m) {
     NET.lobby = m; NET.host = !!m.host;
     renderLobby();
   } else if (m.t === 'state') {
-    MODE.net = true; G = m.view;
+    MODE.net = true; G = m.view; NET.seated = true;
     if (m.view.cfg) { CFG.bb = m.view.cfg.bb; CFG.stack = m.view.cfg.stack; CFG.diff = m.view.cfg.diff || CFG.diff; }
     if (m.view.result) RES = m.view.result;
     $('ov').classList.remove('on');
@@ -1549,6 +1552,7 @@ function renderLobby() {
   const box = $('lobby');
   if (!box) return;
   const inRoom = !!NET.code;
+  $('ov').querySelector('.modal').classList.toggle('hostcfg', inRoom && NET.host);
   $('netJoinBox').style.display = inRoom ? 'none' : '';
   box.style.display = inRoom ? '' : 'none';
   if (!inRoom) return;
@@ -1565,7 +1569,7 @@ function renderLobby() {
       '<button class="start" id="btnNetStart"' + ((L.players || []).length < 2 ? ' disabled' : '') + '>' + (L.playing ? '진행 중 (테이블로)' : '게임 시작') + '</button></div>' +
       '<p class="hint">시작 칩·최소 베팅·난이도(봇)·진행 속도는 위 설정을 그대로 씁니다. 2명 이상이면 시작할 수 있습니다.</p>';
   } else {
-    html += '<p class="hint">' + (L.playing ? '게임이 진행 중입니다. 테이블로 이동하세요.' : '방장이 시작하길 기다리는 중입니다.') + '</p>';
+    html += '<p class="hint">' + (L.playing ? (NET.seated ? '게임이 진행 중입니다. 테이블로 이동하세요.' : '게임이 진행 중입니다. 다음 핸드부터 참여합니다.') : '방장이 시작하길 기다리는 중입니다.') + '</p>';
     if (L.playing) html += '<button class="start" id="btnNetStart">테이블로</button>';
   }
   html += '<button class="opt small" id="btnLeave" style="margin-top:10px">방 나가기</button>';
@@ -1577,7 +1581,7 @@ function renderLobby() {
   };
   if ($('btnBot')) $('btnBot').onclick = () => netSend({ t: 'addBot' });
   if ($('btnNetStart')) $('btnNetStart').onclick = () => {
-    if (L.playing) { $('ov').classList.remove('on'); return; }
+    if (L.playing) { $('ov').classList.remove('on'); if (!NET.seated) $('msg').innerHTML = '<b>대기 중</b> 지금 핸드가 끝나면 다음 핸드부터 참여합니다. 채팅은 바로 할 수 있습니다.'; return; }
     clampStake();
     netSend({ t: 'start', cfg: { stack: CFG.stack, bb: CFG.bb, diff: CFG.diff, speed: CFG.speed, turn: CFG.turn } });
   };

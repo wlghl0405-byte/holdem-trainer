@@ -708,7 +708,7 @@ function gameOver() {
  * 서버(server.js)가 덱과 진행을 쥔다. 브라우저는 자기 좌석 기준 화면 상태(view)를 받아 그리고,
  * 액션만 보낸다. 방 코드로 입장하며, 토큰을 저장해 두어 새로고침해도 자리를 잃지 않는다.
  */
-const NET = { ws: null, url: '', code: '', seat: -1, host: false, token: '', name: '', lobby: null, retry: null, wantClose: false };
+const NET = { ws: null, url: '', code: '', seat: -1, host: false, token: '', name: '', lobby: null, retry: null, wantClose: false, seated: false };
 const store = {
   get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
@@ -745,7 +745,7 @@ function netLeave() {
   NET.wantClose = true; clearTimeout(NET.retry);
   netSend({ t: 'leave' });
   if (NET.ws) { try { NET.ws.close(); } catch (e) {} }
-  NET.ws = null; NET.code = ''; NET.seat = -1; NET.host = false; NET.lobby = null;
+  NET.ws = null; NET.code = ''; NET.seat = -1; NET.host = false; NET.lobby = null; NET.seated = false;
   store.set('ht.room', ''); store.set('ht.token', '');
   MODE.net = false; G = T;
   renderLobby();
@@ -762,7 +762,7 @@ function netHandle(m) {
     NET.lobby = m; NET.host = !!m.host;
     renderLobby();
   } else if (m.t === 'state') {
-    MODE.net = true; G = m.view;
+    MODE.net = true; G = m.view; NET.seated = true;
     if (m.view.cfg) { CFG.bb = m.view.cfg.bb; CFG.stack = m.view.cfg.stack; CFG.diff = m.view.cfg.diff || CFG.diff; }
     if (m.view.result) RES = m.view.result;
     $('ov').classList.remove('on');
@@ -819,7 +819,7 @@ function renderLobby() {
       '<button class="start" id="btnNetStart"' + ((L.players || []).length < 2 ? ' disabled' : '') + '>' + (L.playing ? '진행 중 (테이블로)' : '게임 시작') + '</button></div>' +
       '<p class="hint">시작 칩·최소 베팅·난이도(봇)·진행 속도는 위 설정을 그대로 씁니다. 2명 이상이면 시작할 수 있습니다.</p>';
   } else {
-    html += '<p class="hint">' + (L.playing ? '게임이 진행 중입니다. 테이블로 이동하세요.' : '방장이 시작하길 기다리는 중입니다.') + '</p>';
+    html += '<p class="hint">' + (L.playing ? (NET.seated ? '게임이 진행 중입니다. 테이블로 이동하세요.' : '게임이 진행 중입니다. 다음 핸드부터 참여합니다.') : '방장이 시작하길 기다리는 중입니다.') + '</p>';
     if (L.playing) html += '<button class="start" id="btnNetStart">테이블로</button>';
   }
   html += '<button class="opt small" id="btnLeave" style="margin-top:10px">방 나가기</button>';
@@ -831,7 +831,7 @@ function renderLobby() {
   };
   if ($('btnBot')) $('btnBot').onclick = () => netSend({ t: 'addBot' });
   if ($('btnNetStart')) $('btnNetStart').onclick = () => {
-    if (L.playing) { $('ov').classList.remove('on'); return; }
+    if (L.playing) { $('ov').classList.remove('on'); if (!NET.seated) $('msg').innerHTML = '<b>대기 중</b> 지금 핸드가 끝나면 다음 핸드부터 참여합니다. 채팅은 바로 할 수 있습니다.'; return; }
     clampStake();
     netSend({ t: 'start', cfg: { stack: CFG.stack, bb: CFG.bb, diff: CFG.diff, speed: CFG.speed, turn: CFG.turn } });
   };
