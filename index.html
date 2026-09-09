@@ -400,6 +400,8 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .cfghead span{font-weight:500;color:var(--mute);font-size:11.5px;margin-left:6px}
 .modal.online.hostcfg .cfghead{display:block}
 #netStartBox .start{margin-top:6px}
+.waitbox{margin-top:8px;padding:14px 16px;border:1px dashed var(--line-2);border-radius:12px;text-align:center;color:var(--ink-2);font-size:12.5px;line-height:1.5}
+.waitbox b{display:block;color:var(--ink);font-size:14px;margin-bottom:3px}
 #netStartBox .start:disabled{opacity:.45;cursor:default}
 .hint.bad{color:#E07B70}
 .seat.off .plate{opacity:.55}
@@ -899,6 +901,13 @@ function netHandle(m) {
   } else if (m.t === 'chat') {
     chatPush(m.name, m.text, m.name === NET.name);
   } else if (m.t === 'error') {
+    if (NET.auto && !NET.code && /찾을 수 없습니다/.test(m.msg)) {   // 지난 방이 사라짐: 조용히 혼자 연습으로
+      NET.auto = false; store.set('ht.room', ''); store.set('ht.token', '');
+      NET.wantClose = true; if (NET.ws) { try { NET.ws.close(); } catch (e) {} }
+      setModeTab('local'); netStatus('');
+      return;
+    }
+    NET.auto = false;
     netStatus(m.msg, true);
   }
 }
@@ -928,10 +937,11 @@ function renderLobby() {
   html += '<div class="lobbyrow">' +
     (NET.host && !L.playing ? '<button class="opt small" id="btnBot">봇 추가</button>' : '') +
     '<button class="opt small" id="btnLeave">방 나가기</button>' +
-    '<span class="lobbynote">' + (L.playing ? '게임 진행 중' : NET.host ? ((L.players || []).length < 2 ? '친구가 들어오면 시작 버튼이 나타납니다 (봇만 넣고 해도 됩니다)' : '모두 모였으면 아래 게임 시작을 누르세요') : '방장이 시작하길 기다리는 중입니다') + '</span></div>';
+    '<span class="lobbynote">' + (L.playing ? '게임 진행 중' : NET.host ? ((L.players || []).length < 2 ? '' : '모두 모였으면 아래 게임 시작을 누르세요') : '방장이 시작하길 기다리는 중입니다') + '</span></div>';
   box.innerHTML = html;
   // 맨 아래 큰 버튼
   const enough = (L.players || []).length >= 2;
+  if (!L.playing && !enough) startBox.innerHTML = '<div class="waitbox"><b>친구를 기다리는 중</b><span>공유하기로 링크를 보내세요. 한 명이라도 들어오면 여기에 게임 시작 버튼이 나타납니다. 봇만 넣고 해도 됩니다.</span></div>';
   if (L.playing || (NET.host && enough)) {          // 혼자일 땐 버튼이 없고, 누군가 들어오면 나타난다
     const b = document.createElement('button');
     b.className = 'start';
@@ -1417,7 +1427,7 @@ $('inCode').onkeydown = (e) => { if (e.key === 'Enter') netCreateOrJoin($('inCod
   if (q.get('create') != null) { setModeTab('net'); if ($('inName').value) netCreateOrJoin(''); return; }
   const saved = store.get('ht.room');
   if (room) { setModeTab('net'); $('inCode').value = room; if ($('inName').value) netCreateOrJoin(room); else netStatus('이름을 입력하고 참가를 누르세요.'); }
-  else if (saved && store.get('ht.token')) { setModeTab('net'); $('inCode').value = saved; netCreateOrJoin(saved); }
+  else if (saved && store.get('ht.token')) { NET.auto = true; setModeTab('net'); $('inCode').value = saved; netCreateOrJoin(saved); }
 })();
 $('btnSet').onclick = () => { buildOpts(); $('ov').classList.add('on'); };
 $('btnAdv').onclick = () => {
