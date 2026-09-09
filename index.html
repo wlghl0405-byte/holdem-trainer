@@ -1175,13 +1175,13 @@ function renderActions() {
   const snap = (v) => Math.max(minTo, Math.min(maxTo, Math.round(v / step) * step));
   if (maxTo > G.maxBet) {
     const box = document.createElement('div'); box.className = 'actrow betbox';
+    // 앞에 베팅이 없으면 삥(최소 벳), 있으면 따당(앞 베팅의 2배). 쿼터·하프·풀은 팟 기준
     const sizes = [
-      ['삥', minTo],
-      G.maxBet > 0 ? ['따당', G.maxBet * 2] : null,
+      toCall > 0 ? ['따당', Math.max(minTo, G.maxBet * 2)] : ['삥', minTo],
       ['쿼터', G.maxBet + Math.round((pot + toCall) / 4)],
       ['하프', G.maxBet + Math.round((pot + toCall) / 2)],
       ['풀', G.maxBet + pot + toCall],
-    ].filter(Boolean).map(([l, v]) => [l, snap(v)]);
+    ].map(([l, v]) => [l, snap(v)]);
     const seen = new Set();
     sizes.forEach(([l, v]) => {
       if (v >= maxTo || seen.has(v)) return;           // 올인과 같거나 중복이면 생략
