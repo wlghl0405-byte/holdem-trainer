@@ -77,6 +77,8 @@ function checkView(v, base, label) {
   ok(A.lobby.players.length === 3 && A.lobby.players[2].bot, '봇 추가');
   B.send({ t: 'start', cfg: {} }); await sleep(100);
   ok(B.errors.some((e) => e.includes('방장')), '방장 아닌 사람의 시작 거부');
+  // 테이블 대기 중 입장: 즉시 착석
+  const D = client('대기입장');
 
   // 채팅
   A.send({ t: 'chat', text: '안녕' }); B.send({ t: 'chat', text: '👍' }); await sleep(150);
@@ -86,6 +88,10 @@ function checkView(v, base, label) {
   const STACK = 5000, BASE = STACK * 3;
   A.send({ t: 'start', cfg: { stack: STACK, bb: 100, diff: 'normal', speed: 'fast', turn: 5 } }); await sleep(200);
   ok(A.lastView && A.lastView.stage === 'idle' && A.lastView.players.length === 3, '시작 전 테이블만 깔림(idle)');
+  await D.connect(port); D.send({ t: 'join', code: A.code, name: D.name }); await sleep(200);
+  ok(D.lastView && D.lastView.stage === 'idle' && A.lastView.players.length === 4, '테이블 대기 중 입장자 즉시 착석 (' + (A.lastView.players.length) + '명)');
+  D.send({ t: 'leave' }); await sleep(200);
+  ok(A.lastView.players.length === 3, '대기 중 퇴장 시 자리 제거');
   B.send({ t: 'deal' }); await sleep(100);
   ok(A.lastView.stage === 'idle', '방장 아닌 사람의 시작 무시');
   A.send({ t: 'deal' });

@@ -1613,12 +1613,21 @@ function renderAwayBox() {
 
 function showStartButton() {
   const a = $('actions'); a.innerHTML = '';
-  if (MODE.net && !NET.host) { $('msg').textContent = '방장이 시작하길 기다리는 중입니다'; return; }
+  const row = document.createElement('div'); row.className = 'actrow main'; a.appendChild(row);
+  const seated = G.players.filter((p) => !p.out).length;
+  if (MODE.net && !NET.host) { $('msg').textContent = seated < 2 ? '친구를 기다리는 중입니다' : '방장이 시작하길 기다리는 중입니다'; return; }
+  if (MODE.net && seated < 2) {
+    $('msg').innerHTML = '<b>친구를 기다리는 중</b> 방 코드 ' + esc(NET.code) + ' · 한 명이라도 들어오면 시작 버튼이 나타납니다';
+    const sh = document.createElement('button'); sh.className = 'abtn call'; sh.textContent = '공유하기'; sh.onclick = () => shareRoom(); row.appendChild(sh);
+    const cp = document.createElement('button'); cp.className = 'abtn'; cp.textContent = '링크 복사'; cp.onclick = () => copyLink(cp); row.appendChild(cp);
+    const st = document.createElement('button'); st.className = 'abtn'; st.textContent = '설정'; st.onclick = () => { buildOpts(); $('ov').classList.add('on'); }; row.appendChild(st);
+    return;
+  }
   $('msg').textContent = MODE.net ? '모두 모였으면 시작을 누르세요' : '준비되면 시작을 누르세요';
   const b = document.createElement('button');
   b.className = 'abtn raise'; b.textContent = '시작';
   b.onclick = () => { if (MODE.net) netSend({ t: 'deal' }); else startHand(); };
-  a.appendChild(b);
+  row.appendChild(b);
 }
 
 function showNextButton() {
@@ -1752,7 +1761,22 @@ function netStatus(text, bad) {
   el.textContent = text; el.className = 'hint' + (bad ? ' bad' : '');
 }
 
-/** 설정창의 온라인 패널: 코드·공유 → 명단 → (방장) 방 설정 → 맨 아래 게임 시작 */
+/** 초대 링크·공유 (로비와 테이블에서 공용) */
+function roomLink() { return (location.protocol.startsWith('http') ? location.origin + location.pathname : NET.url + '/') + '?room=' + NET.code; }
+function copyLink(btn) {
+  const link = roomLink();
+  const done = () => { if (btn) { const t = btn.textContent; btn.textContent = '복사됨'; setTimeout(() => { btn.textContent = t; }, 1500); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, () => prompt('링크', link));
+  else prompt('링크', link);
+}
+function shareRoom() {
+  // 공유 문구: 제목 줄 → 방 코드 → 링크 (링크를 text 안에 넣어야 앱마다 끝에 빈 줄이 붙지 않는다)
+  const text = "홀덤 Let's go\n방 코드 " + NET.code + "\n" + roomLink();
+  if (navigator.share) navigator.share({ title: '홀덤', text }).catch(() => {});
+  else { copyLink(null); $('msg').textContent = '이 기기에는 공유 기능이 없어 링크를 복사했습니다. 붙여넣기 해서 보내세요.'; }
+}
+
+/** 설정창의 온라인 패널: 코드·공유하기 → 명단 → (방장) 방 설정 → 맨 아래 테이블로 */
 function renderLobby() {
   const box = $('lobby'), startBox = $('netStartBox');
   if (!box) return;
@@ -1763,7 +1787,6 @@ function renderLobby() {
   startBox.innerHTML = '';
   if (!inRoom) return;
   const L = NET.lobby || { players: [] };
-  const link = (location.protocol.startsWith('http') ? location.origin + location.pathname : NET.url + '/') + '?room=' + NET.code;
   let html = '<div class="lobbyhead"><span>방 코드 <b class="code">' + esc(NET.code) + '</b></span>' +
     '<span class="lobbybtns"><button class="opt small" id="btnShare">공유하기</button><button class="opt small" id="btnCopy">링크 복사</button></span></div>';
   html += '<div class="plist">' + (L.players || []).map((p, i) =>
@@ -1772,33 +1795,27 @@ function renderLobby() {
   html += '<div class="lobbyrow">' +
     (NET.host && !L.playing ? '<button class="opt small" id="btnBot">봇 추가</button>' : '') +
     '<button class="opt small" id="btnLeave">방 나가기</button>' +
-    '<span class="lobbynote">' + (L.playing ? '게임 진행 중' : NET.host ? ((L.players || []).length < 2 ? '' : '모두 모였으면 아래 게임 시작을 누르세요') : '방장이 시작하길 기다리는 중입니다') + '</span></div>';
+    '<span class="lobbynote">' + (L.playing ? '게임 진행 중' : NET.host ? '설정을 마치고 테이블로 나가서 친구를 기다리세요'  : '방장이 시작하길 기다리는 중입니다') + '</span></div>';
   box.innerHTML = html;
   // 맨 아래 큰 버튼
-  const enough = (L.players || []).length >= 2;
-  if (!L.playing && !enough) startBox.innerHTML = '<div class="waitbox"><b>친구를 기다리는 중</b><span>공유하기로 링크를 보내세요. 한 명이라도 들어오면 여기에 게임 시작 버튼이 나타납니다. 봇만 넣고 해도 됩니다.</span></div>';
-  if (L.playing || (NET.host && enough)) {          // 혼자일 땐 버튼이 없고, 누군가 들어오면 나타난다
+  if (L.playing || NET.host) {
     const b = document.createElement('button');
     b.className = 'start';
-    b.textContent = L.playing ? '테이블로' : '게임 시작';
+    b.textContent = NET.host ? (L.playing && NET.seated && G.stage !== 'idle' ? '테이블로' : '테이블로 (설정 적용)') : '테이블로';
     b.onclick = () => {
-      if (L.playing) { $('ov').classList.remove('on'); if (!NET.seated) $('msg').innerHTML = '<b>대기 중</b> 지금 핸드가 끝나면 다음 핸드부터 참여합니다. 채팅은 바로 할 수 있습니다.'; return; }
-      clampStake();
-      netSend({ t: 'start', cfg: { stack: CFG.stack, bb: CFG.bb, diff: CFG.diff, speed: CFG.speed, turn: CFG.turn } });
+      if (NET.host && (!L.playing || G.stage === 'idle' || G.stage === 'over')) {
+        clampStake();
+        netSend({ t: 'start', cfg: { stack: CFG.stack, bb: CFG.bb, diff: CFG.diff, speed: CFG.speed, turn: CFG.turn } });
+        $('ov').classList.remove('on');
+        return;
+      }
+      $('ov').classList.remove('on');
+      if (!NET.seated) $('msg').innerHTML = '<b>대기 중</b> 지금 핸드가 끝나면 다음 핸드부터 참여합니다. 채팅은 바로 할 수 있습니다.';
     };
     startBox.appendChild(b);
   }
-  $('btnShare').onclick = () => {
-    // 공유 문구: 제목 줄 → 방 코드 → 링크 (링크를 text 안에 넣어야 앱마다 끝에 빈 줄이 붙지 않는다)
-    const text = "홀덤 Let's go\n방 코드 " + NET.code + "\n" + link;
-    if (navigator.share) navigator.share({ title: '홀덤', text }).catch(() => {});
-    else { $('btnCopy').click(); netStatus('이 기기에는 공유 기능이 없어 링크를 복사했습니다. 붙여넣기 해서 보내세요.'); }
-  };
-  $('btnCopy').onclick = () => {
-    const done = () => { $('btnCopy').textContent = '복사됨'; setTimeout(() => { $('btnCopy').textContent = '링크 복사'; }, 1500); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, () => prompt('링크', link));
-    else prompt('링크', link);
-  };
+  $('btnShare').onclick = () => shareRoom();
+  $('btnCopy').onclick = () => copyLink($('btnCopy'));
   if ($('btnBot')) $('btnBot').onclick = () => netSend({ t: 'addBot' });
   $('btnLeave').onclick = () => netLeave();
   box.querySelectorAll('[data-kick]').forEach((b) => { b.onclick = () => netSend({ t: 'kick', seat: +b.dataset.kick }); });

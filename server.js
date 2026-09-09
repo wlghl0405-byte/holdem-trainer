@@ -78,28 +78,37 @@ class Room {
     const seat = { name, token: token || crypto.randomBytes(12).toString('hex'), ws, bot: false, online: true, leave: false };
     if (this.playing) { this.waiting.push(seat); }
     this.seats.push(seat);
+    this.seatIfIdle();
     return seat;
+  }
+  /** 테이블이 깔렸지만 첫 핸드 전이면 대기자를 즉시 앉힌다 */
+  seatIfIdle() {
+    if (!this.playing) return;
+    const st = this.table.stage;
+    if (st === 'idle' || st === 'over') { this.betweenHands(); this.dirty = true; }
   }
   addBot() {
     const [name] = TB.pickNames(1, this.seats.map((s) => s.name));
     const seat = { name, token: '', ws: null, bot: true, online: true, leave: false };
     if (this.playing) this.waiting.push(seat);
     this.seats.push(seat);
+    this.seatIfIdle();
     return seat;
   }
   removeSeat(seat) {
     const i = this.seats.indexOf(seat);
     if (i < 0) return;
-    if (this.playing && !this.waiting.includes(seat)) { seat.leave = true; seat.online = false; return; } // 핸드 끝나고 정리
+    if (this.playing && !this.waiting.includes(seat)) {
+      const st = this.table.stage;
+      if (st === 'idle' || st === 'over') { const pi = this.table.players.indexOf(seat.player); if (pi >= 0) this.table.players.splice(pi, 1); this.table.players.forEach((p, k) => { p.id = k; }); this.seats.splice(i, 1); this.dirty = true; return; }
+      seat.leave = true; seat.online = false; return; // 핸드 끝나고 정리
+    }
     this.seats.splice(i, 1);
     const w = this.waiting.indexOf(seat); if (w >= 0) this.waiting.splice(w, 1);
   }
 
   /* ── 게임 시작 ── */
-  start(cfg) {
-    if (this.playing) return false;
-    const live = this.seats.filter((s) => !s.leave);
-    if (live.length < 2) return false;
+  applyCfg(cfg) {
     Object.assign(this.cfg, {
       stack: Math.max(100, Math.min(10000000, Math.round(+cfg.stack) || 10000)),
       bb: 100, diff: ['easy', 'normal', 'hard', 'pro', 'mix'].includes(cfg.diff) ? cfg.diff : 'normal',
@@ -107,6 +116,17 @@ class Room {
       turn: [0, 5, 10, 15, 30, 60, 90, 120].includes(+cfg.turn) ? +cfg.turn : 30,
     });
     this.cfg.bb = Math.max(2, Math.min(Math.floor(this.cfg.stack / 2), Math.round(+cfg.bb) || 100));
+  }
+  /** 테이블 깔기: 모두 착석시키고 첫 핸드 전(idle) 상태로 대기. 방장이 테이블에서 '시작'을 누르면 deal */
+  start(cfg) {
+    if (this.playing) {
+      const st = this.table.stage;
+      if (st !== 'idle' && st !== 'over') return false;
+      this.applyCfg(cfg || {}); this.table.players.forEach((p) => { p.stack = this.cfg.stack; p.out = false; }); this.broadcastLobby(); this.dirty = true; this.broadcastState();
+      return true;
+    }
+    const live = this.seats.filter((s) => !s.leave);
+    this.applyCfg(cfg || {});
     this.seats = live; this.waiting = [];
     this.table.reset();
     this.seats.forEach((s, i) => { const p = this.table.addPlayer({ id: i, name: s.name, human: !s.bot, bot: s.bot, stack: this.cfg.stack, style: s.bot ? TB.Table.styleFor(this.cfg.diff) : undefined }); p.online = s.online; s.player = p; });
@@ -235,15 +255,17 @@ class Room {
       if (T.doAction(idx, m.type, m.amount)) this.drive();
     } else if (m.t === 'start') {
       if (!this.isHost(seat)) return send(seat.ws, { t: 'error', msg: '방장만 시작할 수 있습니다.' });
-      if (!this.start(m.cfg || {})) send(seat.ws, { t: 'error', msg: '2명 이상 있어야 시작합니다.' });
+      if (!this.start(m.cfg || {})) send(seat.ws, { t: 'error', msg: '게임이 진행 중이라 설정을 바꿀 수 없습니다.' });
     } else if (m.t === 'deal') {
       if (!this.isHost(seat)) return send(seat.ws, { t: 'error', msg: '방장만 시작할 수 있습니다.' });
       if (!this.playing || (T.stage !== 'idle' && T.stage !== 'over')) return;
+      if (T.alive().length < 2) return send(seat.ws, { t: 'error', msg: '2명 이상 있어야 시작합니다.' });
       T.startHand(); this.drive();
     } else if (m.t === 'addBot') {
       if (!this.isHost(seat)) return;
       if (this.seats.length >= 8) return send(seat.ws, { t: 'error', msg: '최대 8명입니다.' });
       this.addBot(); this.broadcastLobby();
+      if (this.playing && this.dirty) this.broadcastState();
     } else if (m.t === 'kick') {
       if (!this.isHost(seat)) return;
       const target = this.seats[m.seat];
@@ -252,6 +274,7 @@ class Room {
       this.removeSeat(target);
       if (!target.bot && target.ws) { try { target.ws.close(); } catch (e) {} }
       this.broadcastLobby();
+      if (this.playing && this.dirty) this.broadcastState();
     } else if (m.t === 'away') {
       // 자리 비움: 'fold'(자동 체크/폴드) · 'bot'(AI 대리) · 그 외(복귀)
       const mode = m.mode === 'fold' || m.mode === 'bot' ? m.mode : '';
@@ -273,6 +296,7 @@ class Room {
       this.removeSeat(seat);
       if (seat.ws) seat.ws.room = null;
       this.broadcastLobby();
+      if (this.playing && this.dirty) this.broadcastState();
       this.cleanupIfEmpty();
     }
   }
