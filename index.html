@@ -347,6 +347,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .actrow{display:flex;gap:8px;width:100%;max-width:560px;justify-content:center}
 .actrow .abtn{flex:1 1 0;min-width:0;padding:12px 8px}
 .actrow.main .abtn{font-size:15px}
+.actrow.single{justify-content:center}.actrow.single .abtn{flex:0 0 auto;min-width:180px;max-width:60%}
 .actrow.main .abtn small,.abtn.allin small{display:block;font-size:11px;font-weight:700;opacity:.85;margin-top:1px}
 .betbox{display:flex;gap:6px;width:100%;justify-content:center}
 .abtn.bet{background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 6px;font-size:13.5px}
@@ -801,10 +802,11 @@ function showNextButton() {
   if (MODE.net) { $('msg').textContent = '잠시 후 다음 핸드가 시작됩니다'; return; }
   if (G.players[0].stack <= 0) { $('msg').innerHTML = '<b>칩을 모두 잃었습니다.</b> 설정에서 새 게임을 시작하세요.'; return; }
   if (alive.length < 2) { $('msg').innerHTML = '<b>테이블의 칩을 모두 획득했습니다.</b>'; return; }
+  const row = document.createElement('div'); row.className = 'actrow main single'; a.appendChild(row);
   const b = document.createElement('button');
   b.className = 'abtn raise'; b.textContent = '다음 핸드';
   b.onclick = () => startHand();
-  a.appendChild(b);
+  row.appendChild(b);
 }
 
 function gameOver() {
@@ -812,10 +814,11 @@ function gameOver() {
     ? '<b>승리</b> 상대가 모두 탈락했습니다.' : '<b>게임 종료</b> 칩을 모두 잃었습니다.';
   $('actions').innerHTML = '';
   if (MODE.net) return;
+  const row = document.createElement('div'); row.className = 'actrow main single'; $('actions').appendChild(row);
   const b = document.createElement('button');
   b.className = 'abtn raise'; b.textContent = '새 게임';
   b.onclick = () => $('ov').classList.add('on');
-  $('actions').appendChild(b);
+  row.appendChild(b);
 }
 
 /* ───────── 온라인 ───────── */
@@ -1138,7 +1141,8 @@ function renderActions() {
   renderAwayBox();
   if (MODE.net && me.away) {
     $('msg').innerHTML = me.away === 'bot' ? '<b>AI 대리 중</b> 봇이 내 패로 대신 플레이합니다.' : '<b>자리 비움 중</b> 내 차례는 자동으로 체크 또는 폴드됩니다.';
-    const b = document.createElement('button'); b.className = 'abtn raise'; b.textContent = '돌아오기'; b.onclick = () => setAway(''); a.appendChild(b);
+    const row = document.createElement('div'); row.className = 'actrow main single'; a.appendChild(row);
+    const b = document.createElement('button'); b.className = 'abtn raise'; b.textContent = '돌아오기'; b.onclick = () => setAway(''); row.appendChild(b);
     return;
   }
   if (G.stage === 'idle' || G.stage === 'over') return showStartButton();
