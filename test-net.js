@@ -4,6 +4,7 @@
  * 검증: 남의 패·덱 비노출, 칩 총량 보존, 토큰 재접속 복귀, 채팅 전달, 차례 제한 자동 처리, 게임 흐름 교착 없음.
  */
 process.env.PORT = '0';
+process.env.OFFLINE_LEAVE_MS = '1500';   // 테스트에서는 끊김 유예를 짧게
 const { server, rooms } = require('./server.js');
 const WebSocket = require('ws');
 
@@ -149,6 +150,14 @@ function checkView(v, base, label) {
   ok(A.lastView.stage !== 'paused' && A.lastView.handNo === h3 + 1, '돌아오면 다음 핸드로 재개 (' + A.lastView.stage + ')');
   ok(A.lastView.players.find((p) => p.name === '영희').hole.length === 0, '자리 비움인 사람은 카드를 받지 않음');
   B2.send({ t: 'away', mode: '' }); await sleep(200);
+
+  // 창을 닫으면(끊긴 채 유예 경과) 자동으로 나감. 유예 안에 돌아오면 자리 유지
+  const E = client('잠깐끊김'); await E.connect(port); E.send({ t: 'join', code: A.code, name: E.name }); await sleep(200);
+  E.ws.close(); await sleep(500);
+  const E2 = client('잠깐끊김'); await E2.connect(port); E2.send({ t: 'join', code: A.code, name: E2.name, token: E.token }); await sleep(200);
+  ok(E2.seat === E.seat && A.lobby.players.some((p) => p.name === '잠깐끊김' && p.online), '유예 안에 돌아오면 자리 유지');
+  E2.ws.close(); await sleep(2500);
+  ok(!A.lobby.players.some((p) => p.name === '잠깐끊김'), '유예가 지나면 자동으로 나감');
 
   // 방장 나가면 방장 이양
   B2.autoplay = true;

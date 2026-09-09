@@ -24,6 +24,7 @@ const SPEEDS = {
 };
 const OFFLINE_GRACE_MS = 6000;  // 접속이 끊긴 사람 차례는 이만큼 기다렸다가 자동 처리
 const NEXT_HAND_SEC = 3;        // 쇼다운 후 다음 핸드까지
+const OFFLINE_LEAVE_MS = +process.env.OFFLINE_LEAVE_MS || 45000; // 끊긴 뒤 이 시간 안에 안 돌아오면 나간 것으로 처리
 const ROOM_IDLE_MS = 3 * 3600 * 1000; // 아무 일도 없는 방은 3시간 뒤 정리
 
 /* ───────── 정적 파일 ───────── */
@@ -305,10 +306,22 @@ class Room {
   }
   disconnect(seat) {
     seat.online = false; seat.ws = null;
-    if (seat.player) seat.player.online = false;
+    if (seat.player) { seat.player.online = false; seat.player.sitOut = true; }   // 끊긴 동안은 카드를 받지 않는다
     if (!this.playing) { this.removeSeat(seat); }
     this.broadcastLobby();
-    if (this.playing) { this.dirty = true; this.broadcastState(); if (this.table.toAct >= 0 && this.table.players[this.table.toAct] === seat.player) { clearInterval(this.clock); this.armTurnClock(); } }
+    if (this.playing) {
+      this.dirty = true; this.broadcastState();
+      const T = this.table;
+      if (T.toAct >= 0 && T.players[T.toAct] === seat.player) { clearInterval(this.clock); this.armTurnClock(); }
+      // 유예 시간 안에 안 돌아오면 자리를 비운다 (창을 닫은 것으로 간주)
+      clearTimeout(seat.leaveT);
+      seat.leaveT = setTimeout(() => {
+        if (seat.online || !this.seats.includes(seat)) return;
+        this.removeSeat(seat); this.broadcastLobby();
+        if (this.playing) { this.dirty = true; if (T.stage === 'paused' && T.dealable().length >= 2) { T.startHand(); this.drive(); } else this.broadcastState(); }
+        this.cleanupIfEmpty();
+      }, OFFLINE_LEAVE_MS);
+    }
     this.cleanupIfEmpty();
   }
   cleanupIfEmpty() {
@@ -339,8 +352,9 @@ wss.on('connection', (ws) => {
       let seat = m.token ? room.seats.find((s) => !s.bot && s.token === m.token) : null;
       if (seat) {  // 복귀
         if (seat.ws && seat.ws !== ws) { try { seat.ws.close(); } catch (e) {} }
-        seat.ws = ws; seat.online = true; seat.leave = false; if (name) seat.name = name;
-        if (seat.player) { seat.player.online = true; seat.player.name = seat.name; }
+        seat.ws = ws; seat.online = true; seat.leave = false; if (name) seat.name = name; clearTimeout(seat.leaveT);
+        if (seat.player) { seat.player.online = true; seat.player.name = seat.name; seat.player.sitOut = seat.away === 'fold'; }
+        if (room.playing && room.table.stage === 'paused' && room.table.dealable().length >= 2) { room.table.startHand(); room.drive(); }
       } else {
         if (!name) return send(ws, { t: 'error', msg: '이름을 입력하세요.' });
         if (room.seats.length >= 8) return send(ws, { t: 'error', msg: '방이 가득 찼습니다(최대 8명).' });
