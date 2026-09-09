@@ -163,7 +163,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .hero.turn .nm::after{content:"내 차례";margin-left:8px;font-size:10.5px;color:var(--gold);border:1px solid var(--gold);padding:1px 7px;border-radius:999px;vertical-align:2px}
 
 /* 액션바 */
-.actions{display:flex;gap:9px;align-items:center;justify-content:center;padding:10px 0 16px;flex-wrap:wrap;min-height:64px}
+.actions{display:flex;gap:9px;align-items:center;justify-content:center;padding:6px 0 8px;flex-wrap:wrap;min-height:52px}
 .abtn{min-width:96px;padding:12px 18px;border-radius:11px;font-size:14.5px;font-weight:750;border:1px solid var(--line-2);background:var(--panel-2);transition:transform .08s}
 .abtn:active{transform:scale(.98)}
 .abtn:disabled{opacity:.32;cursor:default}
@@ -315,12 +315,13 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
   /* 안내문·액션 영역은 내용이 비어도 높이를 유지한다. 안 그러면 상대 턴마다 테이블이 커졌다 작아진다 */
   .msg{font-size:12px;padding:3px 0;min-height:20px;max-height:38px;overflow:hidden}
   /* 액션: 슬라이더 1줄 + 버튼 1줄, 총 2줄 높이를 항상 확보 */
-  .actions{gap:6px;padding:4px 0 6px;min-height:106px;align-content:flex-start}
+  .actions{gap:4px;padding:2px 0 4px;min-height:84px;align-content:flex-start}
   .raisebox{order:1;flex:1 1 100%;justify-content:space-between;padding:5px 10px;gap:8px}
   .raisebox input[type=range]{flex:1;width:auto}
   .raisebox .amt{font-size:13px;min-width:56px}
-  .abtn{min-width:0;flex:1 1 0;padding:12px 4px;font-size:13.5px;border-radius:10px}
-  .actrow{gap:6px}
+  .abtn{min-width:0;flex:1 1 0;padding:9px 4px;font-size:13px;border-radius:9px}
+  .actrow{gap:5px}
+  .abtn.bet{padding:6px 2px;font-size:12px;flex-direction:column;gap:0}
   .modal{padding:18px;border-radius:16px}
   .numin{padding:9px 11px;font-size:14px}
   .rcard{padding:13px 18px 15px;border-radius:15px}
@@ -343,15 +344,15 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
   .hero .ch{font-size:15px} .hero .made{display:none}
   .actions{padding:2px 0 4px;min-height:92px} .abtn{padding:10px 6px}
 }
-.actions{flex-direction:column;gap:8px}
-.actrow{display:flex;gap:8px;width:100%;max-width:560px;justify-content:center}
-.actrow .abtn{flex:1 1 0;min-width:0;padding:12px 8px}
-.actrow.main .abtn{font-size:15px}
+.actions{flex-direction:column;gap:5px}
+.actrow{display:flex;gap:6px;width:100%;max-width:520px;justify-content:center}
+.actrow .abtn{flex:1 1 0;min-width:0;padding:8px 8px;border-radius:9px}
+.actrow.main .abtn{font-size:14px}
 .actrow.single{justify-content:center}.actrow.single .abtn{flex:0 0 auto;min-width:180px;max-width:60%}
-.actrow.main .abtn small,.abtn.allin small{display:block;font-size:11px;font-weight:700;opacity:.85;margin-top:1px}
-.betbox{display:flex;gap:6px;width:100%;justify-content:center}
-.abtn.bet{background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 6px;font-size:13.5px}
-.abtn.bet small{font-size:11px;color:var(--gold);font-weight:700}
+.actrow.main .abtn small,.abtn.allin small{display:inline;font-size:11px;font-weight:700;opacity:.85;margin-left:5px}
+.betbox{display:flex;gap:5px;width:100%;justify-content:center}
+.abtn.bet{background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);display:flex;flex-direction:row;align-items:baseline;justify-content:center;gap:4px;padding:6px 4px;font-size:12.5px}
+.abtn.bet small{font-size:10.5px;color:var(--gold);font-weight:700}
 .abtn.bet:hover{border-color:var(--gold)}
 .chat{height:150px;overflow-y:auto;font-size:12.5px;line-height:1.5}
 .chat .cl b{color:var(--gold);font-weight:700;margin-right:4px}.chat .cl.me b{color:var(--info)}
