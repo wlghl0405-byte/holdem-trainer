@@ -10,6 +10,7 @@
  *               'stage'   액션 가능한 사람이 없어 다음 보드를 자동으로 깔 차례(next())
  *               'showdown' 핸드 종료(결과는 table.result), startHand()로 다음 핸드
  *               'over'    게임 종료(생존자 1명 이하)
+ *               'paused'  자리 비움 등으로 칠 수 있는 사람이 1명뿐이라 대기 중 (돌아오면 startHand)
  *               'idle'    아직 시작 전
  *
  * 이벤트: onEvent(type, data)
@@ -77,24 +78,26 @@
       return names.map((name) => this.addPlayer({ name, human: false, bot: true, style: Table.styleFor(this.cfg.diff) }));
     }
     removePlayer(idx) {
-      if (this.stage !== 'idle' && this.stage !== 'over') return false;
+      if (this.stage !== 'idle' && this.stage !== 'over' && this.stage !== 'paused') return false;
       this.players.splice(idx, 1);
       this.players.forEach((p, i) => { p.id = i; });
       return true;
     }
     resetPlayer(p) {
-      p.hole = []; p.bet = 0; p.committed = 0; p.folded = !!p.out; p.allIn = false; p.acted = false; p.last = ''; p.lastType = ''; p.aggressor = false;
+      p.hole = []; p.bet = 0; p.committed = 0; p.folded = !!(p.out || p.sitOut); p.allIn = false; p.acted = false; p.last = ''; p.lastType = ''; p.aggressor = false;
     }
 
     /* ───────── 조회 ───────── */
     alive() { return this.players.filter((p) => !p.out); }
+    /** 이번 핸드에 카드를 받을 사람 (탈락·자리 비움 제외) */
+    dealable() { return this.players.filter((p) => !p.out && !p.sitOut); }
     inHand() { return this.players.filter((p) => !p.out && !p.folded); }
     canAct() { return this.inHand().filter((p) => !p.allIn); }
     potTotal() { return this.players.reduce((a, p) => a + p.committed, 0); }
     logLine(t, cls) { this.log.push({ t, cls }); if (this.log.length > 200) this.log.shift(); }
     nextAlive(from) {
       let i = from;
-      for (let k = 0; k < this.players.length; k++) { i = (i + 1) % this.players.length; if (!this.players[i].out) return i; }
+      for (let k = 0; k < this.players.length; k++) { i = (i + 1) % this.players.length; if (!this.players[i].out && !this.players[i].sitOut) return i; }
       return from;
     }
     nextActor(from) {
@@ -116,6 +119,7 @@
       if (this.auto) return this.auto;
       if (this.stage === 'showdown') return 'showdown';
       if (this.stage === 'over') return 'over';
+      if (this.stage === 'paused') return 'paused';
       if (this.stage === 'idle') return 'idle';
       return this.toAct >= 0 ? 'human' : 'idle';
     }
@@ -123,14 +127,15 @@
     /* ───────── 핸드 시작 ───────── */
     startHand() {
       this.players.forEach((p) => { if (p.stack <= 0) p.out = true; });
-      const alive = this.alive();
-      if (alive.length < 2) { this.stage = 'over'; this.toAct = -1; this.auto = null; this.emit('gameover'); this.emit('state'); return false; }
+      if (this.alive().length < 2) { this.stage = 'over'; this.toAct = -1; this.auto = null; this.emit('gameover'); this.emit('state'); return false; }
+      const alive = this.dealable();
+      if (alive.length < 2) { this.stage = 'paused'; this.toAct = -1; this.auto = null; this.board = []; this.players.forEach((p) => this.resetPlayer(p)); this.emit('state'); return false; }   // 자리 비움으로 대기
 
       this.handNo++; this.result = null;
       this.board = []; this.stage = 'preflop'; this.showAll = false; this.maxBet = 0; this.minRaise = this.cfg.bb;
       this.deck = HE.shuffle(HE.newDeck());
       this.players.forEach((p) => { this.resetPlayer(p); p.handStart = p.stack; });
-      do { this.btn = (this.btn + 1) % this.players.length; } while (this.players[this.btn].out);
+      do { this.btn = (this.btn + 1) % this.players.length; } while (this.players[this.btn].out || this.players[this.btn].sitOut);
       alive.forEach((p) => { p.hole = [this.deck.pop(), this.deck.pop()]; });
 
       this.logLine('핸드 #' + this.handNo, 'hd');
@@ -155,7 +160,7 @@
 
     /** 상태 변경 후 다음에 할 일 결정 */
     settle() {
-      if (this.stage === 'showdown' || this.stage === 'over' || this.stage === 'idle') { this.auto = null; this.emit('state'); return; }
+      if (this.stage === 'showdown' || this.stage === 'over' || this.stage === 'idle' || this.stage === 'paused') { this.auto = null; this.emit('state'); return; }
       if (this.inHand().length <= 1) return this.endHand();
       if (this.roundDone()) { this.toAct = -1; this.auto = 'stage'; this.emit('state'); return; }   // 자동 진행 대기 중엔 아무도 액션 불가
       if (this.toAct < 0) this.toAct = this.nextActor(this.btn);
@@ -431,7 +436,7 @@
         players.push({
           id: p.id, name: p.name, human: p.human, bot: !!p.bot, online: p.online !== false, style: p.style || '', styleLabel: p.style && Table.STYLES[p.style] ? Table.STYLES[p.style].label : '', away: p.away || '',
           stack: p.stack, bet: p.bet, committed: p.committed, folded: p.folded, allIn: p.allIn, out: p.out,
-          acted: p.acted, last: p.last, lastType: p.lastType, handStart: p.handStart,
+          acted: p.acted, last: p.last, lastType: p.lastType, handStart: p.handStart, sitOut: !!p.sitOut,
           hole: reveal ? p.hole.slice() : p.hole.map(() => null),
         });
       }

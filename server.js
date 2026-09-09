@@ -86,6 +86,7 @@ class Room {
     if (!this.playing) return;
     const st = this.table.stage;
     if (st === 'idle' || st === 'over') { this.betweenHands(); this.dirty = true; }
+    else if (st === 'paused') { this.betweenHands(); this.dirty = true; if (this.table.dealable().length >= 2) { this.table.startHand(); this.drive(); } }
   }
   addBot() {
     const [name] = TB.pickNames(1, this.seats.map((s) => s.name));
@@ -100,7 +101,7 @@ class Room {
     if (i < 0) return;
     if (this.playing && !this.waiting.includes(seat)) {
       const st = this.table.stage;
-      if (st === 'idle' || st === 'over') { const pi = this.table.players.indexOf(seat.player); if (pi >= 0) this.table.players.splice(pi, 1); this.table.players.forEach((p, k) => { p.id = k; }); this.seats.splice(i, 1); this.dirty = true; return; }
+      if (st === 'idle' || st === 'over' || st === 'paused') { const pi = this.table.players.indexOf(seat.player); if (pi >= 0) this.table.players.splice(pi, 1); this.table.players.forEach((p, k) => { p.id = k; }); this.seats.splice(i, 1); this.dirty = true; return; }
       seat.leave = true; seat.online = false; return; // 핸드 끝나고 정리
     }
     this.seats.splice(i, 1);
@@ -183,6 +184,7 @@ class Room {
     }
     else if (p === 'showdown') this.armNextHand();
     else if (p === 'over') this.gameOver();
+    else if (p === 'paused') this.broadcast({ t: 'paused', names: T.players.filter((q) => q.sitOut && !q.out).map((q) => q.name) });
   }
 
   /** 차례인 사람을 대신해 체크 또는 폴드 */
@@ -279,11 +281,12 @@ class Room {
       // 자리 비움: 'fold'(자동 체크/폴드) · 'bot'(AI 대리) · 그 외(복귀)
       const mode = m.mode === 'fold' || m.mode === 'bot' ? m.mode : '';
       seat.away = mode;
-      if (seat.player) { seat.player.away = mode; if (mode === 'bot') seat.player.style = TB.Table.styleFor(this.cfg.diff); }
+      if (seat.player) { seat.player.away = mode; seat.player.sitOut = mode === 'fold'; if (mode === 'bot') seat.player.style = TB.Table.styleFor(this.cfg.diff); }
       this.broadcastLobby();
       if (this.playing) {
         this.dirty = true;
-        if (T.toAct >= 0 && T.players[T.toAct] === seat.player) this.drive();   // 지금 내 차례면 즉시 처리 방식 전환
+        if (T.stage === 'paused' && T.dealable().length >= 2) { T.startHand(); this.drive(); }               // 돌아와서 다시 2명 이상이면 재개
+        else if (T.toAct >= 0 && T.players[T.toAct] === seat.player) this.drive();   // 지금 내 차례면 즉시 처리 방식 전환
         else this.broadcastState();
       }
     } else if (m.t === 'chat') {

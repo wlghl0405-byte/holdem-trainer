@@ -139,6 +139,16 @@ function checkView(v, base, label) {
   ok(A.lastView.handNo >= h2 + 2 && B2.acted === acted2, 'AI 대리 중 액션 없이 2핸드 진행 (' + h2 + '→' + A.lastView.handNo + ')');
   B2.send({ t: 'away', mode: '' }); await sleep(200);
   ok(A.lobby.players.find((p) => p.name === '영희').away === '', '복귀');
+  // 두 사람 모두 자리 비움 → 봇 혼자 남아 게임이 멈추고, 한 명이 돌아오면 재개
+  A.autoplay = false; A.send({ t: 'away', mode: 'fold' }); B2.send({ t: 'away', mode: 'fold' });
+  const t3 = Date.now();
+  while (Date.now() - t3 < 30000 && !(A.lastView && A.lastView.stage === 'paused')) await sleep(100);
+  ok(A.lastView && A.lastView.stage === 'paused', '칠 사람이 1명뿐이면 멈춤 (stage=' + (A.lastView && A.lastView.stage) + ')');
+  const h3 = A.lastView.handNo;
+  A.autoplay = true; A.send({ t: 'away', mode: '' }); await sleep(500);
+  ok(A.lastView.stage !== 'paused' && A.lastView.handNo === h3 + 1, '돌아오면 다음 핸드로 재개 (' + A.lastView.stage + ')');
+  ok(A.lastView.players.find((p) => p.name === '영희').hole.length === 0, '자리 비움인 사람은 카드를 받지 않음');
+  B2.send({ t: 'away', mode: '' }); await sleep(200);
 
   // 방장 나가면 방장 이양
   B2.autoplay = true;
