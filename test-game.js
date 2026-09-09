@@ -112,7 +112,8 @@ function playHands(opts) {
     drain();
   }
   // 루프 종료 시점엔 다음 핸드가 이미 시작돼 블라인드·베팅이 나가 있을 수 있으므로 committed를 합산해 비교
-  const total = G.players.reduce((a, p) => a + p.stack + p.committed, 0);
+  // 쇼다운 직후라면 팟이 이미 승자 스택에 들어가 있으므로 committed는 더하지 않는다
+  const total = G.players.reduce((a, p) => a + p.stack + (G.stage === 'showdown' ? 0 : p.committed), 0);
   return { played, sidePotSeen, allInSeen, rebuy, total, TOTAL: BASE + rebuy };
 }
 

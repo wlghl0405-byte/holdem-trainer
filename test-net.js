@@ -60,7 +60,7 @@ function checkView(v, base, label) {
 
   const A = client('철수'), B = client('영희');
   await A.connect(port); A.send({ t: 'create', name: A.name }); await sleep(150);
-  ok(A.code && A.code.length === 4 && A.host, '방 생성 · 코드 ' + A.code);
+  ok(A.code && /^\d{4}$/.test(A.code) && A.host, '방 생성 · 숫자 코드 ' + A.code);
 
   await B.connect(port); B.send({ t: 'join', code: A.code, name: B.name }); await sleep(150);
   ok(B.code === A.code && B.seat === 1 && !B.host, '참가 · 좌석 ' + B.seat);
@@ -90,7 +90,7 @@ function checkView(v, base, label) {
   ok(A.lastView.stage === 'idle', '방장 아닌 사람의 시작 무시');
   A.send({ t: 'deal' });
   const t0 = Date.now();
-  while ((A.lastView ? A.lastView.handNo : 0) < 3 && Date.now() - t0 < 40000) await sleep(100);
+  while ((A.lastView ? A.lastView.handNo : 0) < 3 && Date.now() - t0 < 60000) await sleep(100);
   ok(A.lastView && A.lastView.handNo >= 3, '3핸드 이상 진행 (' + (A.lastView ? A.lastView.handNo : 0) + '핸드)');
   ok(A.acted > 0 && B.acted > 0, '두 사람 모두 액션 (' + A.acted + '/' + B.acted + ')');
   ok(A.clocks > 0, '차례 시계 수신');

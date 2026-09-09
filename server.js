@@ -40,7 +40,7 @@ const server = http.createServer((req, res) => {
 
 /* ───────── 방 ───────── */
 const rooms = new Map();
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // 0/O, 1/I 혼동 문자 제외
+const CODE_CHARS = '0123456789'; // 숫자 4자리
 function newCode() {
   let c;
   do { c = ''; for (let i = 0; i < 4; i++) c += CODE_CHARS[crypto.randomInt(CODE_CHARS.length)]; } while (rooms.has(c));
@@ -109,7 +109,7 @@ class Room {
     this.cfg.bb = Math.max(2, Math.min(Math.floor(this.cfg.stack / 2), Math.round(+cfg.bb) || 100));
     this.seats = live; this.waiting = [];
     this.table.reset();
-    this.seats.forEach((s, i) => { const p = this.table.addPlayer({ id: i, name: s.name, human: !s.bot, bot: s.bot, stack: this.cfg.stack }); p.online = s.online; s.player = p; });
+    this.seats.forEach((s, i) => { const p = this.table.addPlayer({ id: i, name: s.name, human: !s.bot, bot: s.bot, stack: this.cfg.stack, style: s.bot ? TB.Table.styleFor(this.cfg.diff) : undefined }); p.online = s.online; s.player = p; });
     this.playing = true;
     this.broadcastLobby();
     this.drive();                 // 테이블만 깔림(stage idle). 방장이 '시작'을 누르면 deal
@@ -125,14 +125,14 @@ class Room {
       if (s.leave) { const pi = T.players.indexOf(s.player); if (pi >= 0) T.players.splice(pi, 1); this.seats.splice(i, 1); }
     }
     // 대기자 착석
-    this.waiting.forEach((s) => { const p = T.addPlayer({ name: s.name, human: !s.bot, bot: s.bot, stack: this.cfg.stack }); p.online = s.online; s.player = p; });
+    this.waiting.forEach((s) => { const p = T.addPlayer({ name: s.name, human: !s.bot, bot: s.bot, stack: this.cfg.stack, style: s.bot ? TB.Table.styleFor(this.cfg.diff) : undefined }); p.online = s.online; s.player = p; });
     this.waiting = [];
     T.players.forEach((p, i) => { p.id = i; });
     // 파산자는 제외 상태로 남고(관전), 방장이 다시 시작하면 복구된다
   }
 
   onEvent(type, data) {
-    if (type === 'state') { this.dirty = true; return; }
+    if (type === 'state') { this.dirty = true; if (this.table.stage !== 'showdown') this.preBoard = this.table.board.length; return; }
     if (type === 'action' || type === 'stage' || type === 'hand') this.broadcast({ t: 'event', name: type, data });
   }
   broadcast(m) { this.seats.forEach((s) => { if (!s.bot && s.player) send(s.ws, m); }); }
@@ -178,7 +178,13 @@ class Room {
   }
 
   armNextHand() {
+    // 쇼다운 연출(보드 한 장씩·패 순서대로 공개)이 끝난 뒤 카운트다운을 시작한다
+    const res = this.table.result;
+    const rows = res && res.rows ? res.rows.length : 0;
+    const k = { slow: 1, normal: 0.7, fast: 0.45 }[this.cfg.speed] || 1;
+    const revealMs = rows >= 2 ? (900 * Math.max(0, 5 - (this.preBoard == null ? 5 : this.preBoard)) + 700 * rows + 1300) * k : 0;
     let left = NEXT_HAND_SEC;
+    this.timer = setTimeout(() => {
     this.broadcast({ t: 'countdown', sec: left });
     this.clock = setInterval(() => {
       left--;
@@ -191,6 +197,7 @@ class Room {
         this.drive();
       }
     }, 1000);
+    }, revealMs);
   }
 
   gameOver() {

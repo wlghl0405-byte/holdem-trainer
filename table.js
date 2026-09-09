@@ -157,7 +157,7 @@
     settle() {
       if (this.stage === 'showdown' || this.stage === 'over' || this.stage === 'idle') { this.auto = null; this.emit('state'); return; }
       if (this.inHand().length <= 1) return this.endHand();
-      if (this.roundDone()) { this.auto = 'stage'; this.emit('state'); return; }
+      if (this.roundDone()) { this.toAct = -1; this.auto = 'stage'; this.emit('state'); return; }   // 자동 진행 대기 중엔 아무도 액션 불가
       if (this.toAct < 0) this.toAct = this.nextActor(this.btn);
       const p = this.players[this.toAct];
       this.auto = p.human ? null : 'bot';
@@ -171,9 +171,12 @@
       if (a === 'stage') { this.auto = null; return this.nextStage(); }
       return false;
     }
+    /** 핸드가 진행 중인 스테이지인지 */
+    get live() { return this.stage === 'preflop' || this.stage === 'flop' || this.stage === 'turn' || this.stage === 'river'; }
 
     /* ───────── 진행 ───────── */
     nextStage() {
+      if (!this.live) return false;                                  // 쇼다운·종료 뒤 늦게 도착한 자동 진행은 무시
       this.players.forEach((p) => { p.bet = 0; p.acted = false; p.last = ''; p.lastType = ''; });
       this.maxBet = 0; this.minRaise = this.cfg.bb;
       const next = STAGES[STAGES.indexOf(this.stage) + 1];
@@ -194,7 +197,7 @@
     /** 액션. 반환값 false = 거부(차례 아님 등) */
     doAction(i, type, amount) {
       const p = this.players[i];
-      if (!p || this.stage === 'idle' || this.stage === 'showdown' || this.stage === 'over') return false;
+      if (!p || !this.live || this.auto) return false;               // 진행 중이 아니거나 자동 진행 대기 중이면 거부
       if (i !== this.toAct || p.folded || p.allIn || p.out) return false;
       const toCall = this.maxBet - p.bet;
       let act = '', cls = '';
@@ -276,6 +279,7 @@
 
     botAct(i) {
       const p = this.players[i];
+      if (!this.live) return false;
       if (!p || p.folded || p.allIn || p.out || i !== this.toAct) { this.toAct = this.nextActor(this.toAct); this.settle(); return false; }
       const st = Table.STYLES[p.style] || Table.STYLES[Table.styleFor(this.cfg.diff)];
       const R = Math.random;
@@ -441,7 +445,7 @@
       return {
         seat, players, board: this.board.slice(), stage: this.stage, btn: rot(this.btn), toAct: rot(this.toAct),
         maxBet: this.maxBet, minRaise: this.minRaise, handNo: this.handNo, showAll: this.showAll,
-        log: this.log.slice(-60), cfg: { stack: this.cfg.stack, bb: this.cfg.bb, diff: this.cfg.diff },
+        log: this.log.slice(-60), cfg: { stack: this.cfg.stack, bb: this.cfg.bb, diff: this.cfg.diff, speed: this.cfg.speed },
         pending: this.pending(), result,
       };
     }
