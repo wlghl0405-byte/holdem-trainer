@@ -4,7 +4,7 @@ let win;
 function createWindow() {
   win = new BrowserWindow({
     width: 1360, height: 900, minWidth: 1000, minHeight: 700,
-    title: '홀덤 트레이너', autoHideMenuBar: true, backgroundColor: '#0B0E0D',
+    title: '홀덤', autoHideMenuBar: true, backgroundColor: '#0B0E0D',
     webPreferences: { contextIsolation: true },
   });
   Menu.setApplicationMenu(null);

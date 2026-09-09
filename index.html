@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="홀덤 트레이너">
+<meta name="apple-mobile-web-app-title" content="홀덤">
 <meta name="theme-color" content="#0B0E0D">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>홀덤 트레이너</title>
+<title>홀덤</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <style>
 :root{
@@ -319,7 +319,8 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
   .raisebox{order:1;flex:1 1 100%;justify-content:space-between;padding:5px 10px;gap:8px}
   .raisebox input[type=range]{flex:1;width:auto}
   .raisebox .amt{font-size:13px;min-width:56px}
-  .abtn{order:2;min-width:0;flex:1 1 0;padding:13px 6px;font-size:14px;border-radius:10px}
+  .abtn{min-width:0;flex:1 1 0;padding:12px 4px;font-size:13.5px;border-radius:10px}
+  .actrow{gap:6px}
   .modal{padding:18px;border-radius:16px}
   .numin{padding:9px 11px;font-size:14px}
   .rcard{padding:13px 18px 15px;border-radius:15px}
@@ -342,8 +343,13 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
   .hero .ch{font-size:15px} .hero .made{display:none}
   .actions{padding:2px 0 4px;min-height:92px} .abtn{padding:10px 6px}
 }
-.betbox{display:flex;gap:6px;flex-wrap:wrap;width:100%;justify-content:center}
-.abtn.bet{background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 12px;min-width:64px}
+.actions{flex-direction:column;gap:8px}
+.actrow{display:flex;gap:8px;width:100%;max-width:560px;justify-content:center}
+.actrow .abtn{flex:1 1 0;min-width:0;padding:12px 8px}
+.actrow.main .abtn{font-size:15px}
+.actrow.main .abtn small,.abtn.allin small{display:block;font-size:11px;font-weight:700;opacity:.85;margin-top:1px}
+.betbox{display:flex;gap:6px;width:100%;justify-content:center}
+.abtn.bet{background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 6px;font-size:13.5px}
 .abtn.bet small{font-size:11px;color:var(--gold);font-weight:700}
 .abtn.bet:hover{border-color:var(--gold)}
 .chat{height:150px;overflow-y:auto;font-size:12.5px;line-height:1.5}
@@ -379,7 +385,13 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .prow:last-child{border-bottom:none}.prow.off{color:var(--mute)}
 .prow em{font-style:normal;font-size:11px;color:var(--gold);margin-left:6px}
 .opt.small{padding:6px 10px;font-size:12px}
-.lobbyctl{display:flex;gap:8px;align-items:center}.lobbyctl .start{flex:1;margin:0}
+.lobbyrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:2px 0 6px}
+.lobbynote{font-size:12px;color:var(--mute);margin-left:auto}
+.cfghead{display:none;font-size:13px;font-weight:800;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+.cfghead span{font-weight:500;color:var(--mute);font-size:11.5px;margin-left:6px}
+.modal.online.hostcfg .cfghead{display:block}
+#netStartBox .start{margin-top:6px}
+#netStartBox .start:disabled{opacity:.45;cursor:default}
 .hint.bad{color:#E07B70}
 .seat.off .plate{opacity:.55}
 .numin[type=text]{text-align:left}
@@ -388,7 +400,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 <body>
 <div class="app">
   <header>
-    <h1>홀덤 <span>트레이너</span></h1>
+    <h1>홀덤<span>.</span></h1>
     <div class="hstat">
       <span>핸드 <b class="num" id="hHand">0</b></span>
       <span>블라인드 <b class="num" id="hBlind">50 / 100</b></span>
@@ -480,6 +492,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
       <label>상대 수</label>
       <div class="opts" id="optOpp"></div>
     </div>
+    <h3 class="netcfg cfghead">방 설정 <span>방장만 바꿀 수 있습니다</span></h3>
     <div class="fld netcfg">
       <label>난이도</label>
       <div class="opts" id="optDiff"></div>
@@ -508,8 +521,9 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
       <input class="numin num" id="inBB" type="number" min="2" step="10" inputmode="numeric">
       <p class="hint" id="bbHint"></p>
     </div>
+    <div class="netonly" id="netStartBox"></div>
     <button class="start localonly" id="btnStart">게임 시작</button>
-    <p class="hint">어드바이저는 승률·아웃츠·팟오즈를 계산해 콜 가치를 알려줍니다. 규칙에 익숙해지면 끄고 연습하세요.</p>
+    <p class="hint localonly">어드바이저는 승률·아웃츠·팟오즈를 계산해 콜 가치를 알려줍니다. 규칙에 익숙해지면 끄고 연습하세요.</p>
   </div>
 </div>
 
@@ -822,7 +836,7 @@ function netHandle(m) {
   if (m.t === 'joined') {
     NET.code = m.code; NET.seat = m.seat; NET.token = m.token; NET.host = !!m.host;
     store.set('ht.room', m.code); store.set('ht.token', m.token); store.set('ht.server', NET.url);
-    netStatus('방 ' + m.code + ' 입장');
+    netStatus('');
     if ($('chatState')) $('chatState').textContent = '방 ' + m.code;
     renderLobby();
   } else if (m.t === 'lobby') {
@@ -835,6 +849,7 @@ function netHandle(m) {
     $('ov').classList.remove('on');
     $('hBlind').textContent = fmt(SB()) + ' / ' + fmt(CFG.bb);
     $('hDiff').textContent = '온라인 · 방 ' + NET.code;
+    document.querySelectorAll('#mtabs button[data-sec="adv"]').forEach((b) => { b.style.display = 'none'; });
     if (G.stage !== 'showdown') { $('result').classList.remove('on'); revealClear(); }
     if (G.stage === 'showdown') { if (REVEAL.hand !== G.handNo) onShowdown(RES); else if (!REVEAL.on) { render(); showResult(RES); showNextButton(); } }
     else render();
@@ -863,37 +878,46 @@ function netStatus(text, bad) {
   el.textContent = text; el.className = 'hint' + (bad ? ' bad' : '');
 }
 
-/** 설정창의 온라인 패널 */
+/** 설정창의 온라인 패널: 코드·공유 → 명단 → (방장) 방 설정 → 맨 아래 게임 시작 */
 function renderLobby() {
-  const box = $('lobby');
+  const box = $('lobby'), startBox = $('netStartBox');
   if (!box) return;
   const inRoom = !!NET.code;
   $('ov').querySelector('.modal').classList.toggle('hostcfg', inRoom && NET.host);
   $('netJoinBox').style.display = inRoom ? 'none' : '';
   box.style.display = inRoom ? '' : 'none';
+  startBox.innerHTML = '';
   if (!inRoom) return;
   const L = NET.lobby || { players: [] };
   const link = (location.protocol.startsWith('http') ? location.origin + location.pathname : NET.url + '/') + '?room=' + NET.code;
   let html = '<div class="lobbyhead"><span>방 코드 <b class="code">' + esc(NET.code) + '</b></span>' +
-    '<span class="lobbybtns"><button class="opt small" id="btnShare">카톡으로 보내기</button><button class="opt small" id="btnCopy">링크 복사</button></span></div>';
+    '<span class="lobbybtns"><button class="opt small" id="btnShare">공유하기</button><button class="opt small" id="btnCopy">링크 복사</button></span></div>';
   html += '<div class="plist">' + (L.players || []).map((p, i) =>
     '<div class="prow' + (p.online === false ? ' off' : '') + '"><span class="pn">' + esc(p.name) + (p.host ? ' <em>방장</em>' : '') + (p.bot ? ' <em>봇</em>' : '') + (p.online === false ? ' <em>오프라인</em>' : '') + (p.away ? ' <em>' + (p.away === 'bot' ? 'AI 대리' : '자리 비움') + '</em>' : '') + '</span>' +
     (NET.host && (p.bot || i !== 0) && !L.playing ? '<button class="opt small" data-kick="' + i + '">내보내기</button>' : '') + '</div>').join('') + '</div>';
-  if (NET.host) {
-    html += '<div class="lobbyctl">' +
-      '<button class="opt small" id="btnBot">봇 추가</button>' +
-      '<button class="start" id="btnNetStart"' + ((L.players || []).length < 2 ? ' disabled' : '') + '>' + (L.playing ? '진행 중 (테이블로)' : '게임 시작') + '</button></div>' +
-      '<p class="hint">시작 칩·최소 베팅·난이도(봇)·진행 속도는 위 설정을 그대로 씁니다. 2명 이상이면 시작할 수 있습니다.</p>';
-  } else {
-    html += '<p class="hint">' + (L.playing ? (NET.seated ? '게임이 진행 중입니다. 테이블로 이동하세요.' : '게임이 진행 중입니다. 다음 핸드부터 참여합니다.') : '방장이 시작하길 기다리는 중입니다.') + '</p>';
-    if (L.playing) html += '<button class="start" id="btnNetStart">테이블로</button>';
-  }
-  html += '<button class="opt small" id="btnLeave" style="margin-top:10px">방 나가기</button>';
+  html += '<div class="lobbyrow">' +
+    (NET.host && !L.playing ? '<button class="opt small" id="btnBot">봇 추가</button>' : '') +
+    '<button class="opt small" id="btnLeave">방 나가기</button>' +
+    '<span class="lobbynote">' + (L.playing ? '게임 진행 중' : NET.host ? ((L.players || []).length < 2 ? '2명 이상 모이면 시작할 수 있습니다' : '모두 모였으면 아래 게임 시작을 누르세요') : '방장이 시작하길 기다리는 중입니다') + '</span></div>';
   box.innerHTML = html;
+  // 맨 아래 큰 버튼
+  if (NET.host || L.playing) {
+    const b = document.createElement('button');
+    b.className = 'start';
+    b.textContent = L.playing ? '테이블로' : '게임 시작';
+    b.disabled = !L.playing && (L.players || []).length < 2;
+    b.onclick = () => {
+      if (L.playing) { $('ov').classList.remove('on'); if (!NET.seated) $('msg').innerHTML = '<b>대기 중</b> 지금 핸드가 끝나면 다음 핸드부터 참여합니다. 채팅은 바로 할 수 있습니다.'; return; }
+      clampStake();
+      netSend({ t: 'start', cfg: { stack: CFG.stack, bb: CFG.bb, diff: CFG.diff, speed: CFG.speed, turn: CFG.turn } });
+    };
+    startBox.appendChild(b);
+  }
   $('btnShare').onclick = () => {
-    const text = '홀덤 한 판 하자. 방 코드 ' + NET.code;
-    if (navigator.share) navigator.share({ title: '홀덤 트레이너', text, url: link }).catch(() => {});
-    else { $('btnCopy').click(); netStatus('이 기기에는 공유 기능이 없어 링크를 복사했습니다. 카톡에 붙여넣기 하세요.'); }
+    // 공유 문구: 제목 줄 → 방 코드 → 링크 (링크를 text 안에 넣어야 앱마다 끝에 빈 줄이 붙지 않는다)
+    const text = "홀덤 Let's go\n방 코드 " + NET.code + "\n" + link;
+    if (navigator.share) navigator.share({ title: '홀덤', text }).catch(() => {});
+    else { $('btnCopy').click(); netStatus('이 기기에는 공유 기능이 없어 링크를 복사했습니다. 붙여넣기 해서 보내세요.'); }
   };
   $('btnCopy').onclick = () => {
     const done = () => { $('btnCopy').textContent = '복사됨'; setTimeout(() => { $('btnCopy').textContent = '링크 복사'; }, 1500); };
@@ -901,11 +925,6 @@ function renderLobby() {
     else prompt('링크', link);
   };
   if ($('btnBot')) $('btnBot').onclick = () => netSend({ t: 'addBot' });
-  if ($('btnNetStart')) $('btnNetStart').onclick = () => {
-    if (L.playing) { $('ov').classList.remove('on'); if (!NET.seated) $('msg').innerHTML = '<b>대기 중</b> 지금 핸드가 끝나면 다음 핸드부터 참여합니다. 채팅은 바로 할 수 있습니다.'; return; }
-    clampStake();
-    netSend({ t: 'start', cfg: { stack: CFG.stack, bb: CFG.bb, diff: CFG.diff, speed: CFG.speed, turn: CFG.turn } });
-  };
   $('btnLeave').onclick = () => netLeave();
   box.querySelectorAll('[data-kick]').forEach((b) => { b.onclick = () => netSend({ t: 'kick', seat: +b.dataset.kick }); });
 }
@@ -1057,10 +1076,11 @@ function renderActions() {
   const toCall = G.maxBet - me.bet;
   $('msg').textContent = toCall > 0 ? '콜 하려면 ' + fmt(Math.min(toCall, me.stack)) + ' 필요' : '베팅 없음, 체크 가능';
 
+  const row1 = document.createElement('div'); row1.className = 'actrow main'; a.appendChild(row1);
   const mk = (label, cls, fn, dis) => {
     const b = document.createElement('button');
     b.className = 'abtn ' + cls; b.textContent = label; b.disabled = !!dis; b.onclick = fn;
-    a.appendChild(b); return b;
+    row1.appendChild(b); return b;
   };
   mk('폴드', 'fold', () => doAction(0, 'fold'));
   if (toCall === 0) mk('체크', '', () => doAction(0, 'check'));
@@ -1073,7 +1093,7 @@ function renderActions() {
   const step = STEP();
   const snap = (v) => Math.max(minTo, Math.min(maxTo, Math.round(v / step) * step));
   if (maxTo > G.maxBet) {
-    const box = document.createElement('div'); box.className = 'betbox';
+    const box = document.createElement('div'); box.className = 'actrow betbox';
     const sizes = [
       ['삥', minTo],
       G.maxBet > 0 ? ['따당', G.maxBet * 2] : null,
@@ -1092,7 +1112,7 @@ function renderActions() {
     });
     if (box.children.length) a.appendChild(box);
   }
-  mk('올인 ' + fmt(me.stack), 'allin', () => doAction(0, 'raise', me.bet + me.stack));
+  mk('올인', 'allin', () => doAction(0, 'raise', me.bet + me.stack)).innerHTML = '올인<small>' + fmt(me.stack) + '</small>';
 }
 
 /* ───────── 어드바이저 ───────── */
@@ -1344,6 +1364,9 @@ $('inCode').onkeydown = (e) => { if (e.key === 'Enter') netCreateOrJoin($('inCod
   if ($('inServer')) $('inServer').value = store.get('ht.server');
   const q = new URLSearchParams(location.search);
   const room = (q.get('room') || '').toUpperCase();
+  const nm = (q.get('name') || '').trim().slice(0, 12);
+  if (nm) { store.set('ht.name', nm); $('inName').value = nm; }
+  if (q.get('create') != null) { setModeTab('net'); if ($('inName').value) netCreateOrJoin(''); return; }
   const saved = store.get('ht.room');
   if (room) { setModeTab('net'); $('inCode').value = room; if ($('inName').value) netCreateOrJoin(room); else netStatus('이름을 입력하고 참가를 누르세요.'); }
   else if (saved && store.get('ht.token')) { setModeTab('net'); $('inCode').value = saved; netCreateOrJoin(saved); }

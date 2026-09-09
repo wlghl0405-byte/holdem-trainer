@@ -342,5 +342,5 @@ setInterval(() => {
   rooms.forEach((room, code) => { if (now - room.lastActive > ROOM_IDLE_MS) { clearTimeout(room.timer); clearInterval(room.clock); rooms.delete(code); } });
 }, 30000);
 
-server.listen(PORT, () => { console.log('홀덤 트레이너 서버: http://localhost:' + PORT); });
+server.listen(PORT, () => { console.log('홀덤 서버: http://localhost:' + PORT); });
 module.exports = { server, rooms };
