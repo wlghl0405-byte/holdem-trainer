@@ -1080,7 +1080,7 @@ function render() {
   // 좌석
   document.querySelectorAll('.seat').forEach((s) => s.remove());
   const felt = $('felt');
-  const opps = G.players.filter((p) => p.id !== 0);
+  const opps = G.players.slice(1);            // 0번은 항상 나(온라인은 서버가 내 자리를 0번으로 돌려 보낸다)
   const n = opps.length;
   // 좌석은 펠트 안쪽에 배치한다. 반지름이 너무 크면 카드가 테이블 밖으로 나간다.
   const mob = window.innerWidth <= 720;
