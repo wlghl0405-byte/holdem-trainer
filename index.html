@@ -132,6 +132,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .seat{position:absolute;transform:translate(-50%,-50%);width:132px;text-align:center}
 .seat .cards{display:flex;gap:4px;justify-content:center;margin-bottom:5px;min-height:54px}
 .seat .plate{background:rgba(8,14,12,.82);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:5px 8px}
+.seat .nm .sty{font-size:10px;color:var(--gold);font-weight:600;margin-left:3px}
 .seat .nm{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .seat .ch{font-size:12.5px;font-weight:750;color:var(--gold);margin-top:1px}
 .seat.turn .plate{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
@@ -300,7 +301,8 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
   .seat{width:66px}
   .seat .cards{min-height:0;gap:2px;margin-bottom:3px}
   .seat .plate{padding:3px 5px;border-radius:8px}
-  .seat .nm{font-size:10px}.seat .ch{font-size:10.5px}
+  .seat .nm .sty{font-size:10px;color:var(--gold);font-weight:600;margin-left:3px}
+.seat .nm{font-size:10px}.seat .ch{font-size:10.5px}
   .seat .act{font-size:9.5px;padding:1px 6px;bottom:-16px}
   .seat .bet{font-size:10px;bottom:-32px}
   .dbtn{width:15px;height:15px;font-size:8.5px;top:-4px;right:2px}
@@ -477,7 +479,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
       <label>난이도</label>
       <div class="opts" id="optDiff"></div>
     </div>
-    <div class="fld">
+    <div class="fld localonly">
       <label>어드바이저</label>
       <div class="opts" id="optAdv"></div>
     </div>
@@ -532,7 +534,7 @@ const SP = () => {
 // 최소 베팅 = 빅블라인드. 스몰블라인드는 그 절반(홀수면 내림, 최소 1).
 const SB = () => Math.max(1, Math.floor(CFG.bb / 2));
 const STEP = () => Math.max(1, Math.floor(CFG.bb / 2));
-const DIFF_NAME = { easy: '초급', normal: '중급', hard: '고수' };
+const DIFF_NAME = { easy: '초급', normal: '중급', hard: '고수', pro: '프로', mix: '섞기' };
 
 /*
  * 게임 진행은 table.js(TB.Table)가 맡는다. 화면은 G를 읽어 그린다.
@@ -570,7 +572,8 @@ function newGame() {
   $('hBlind').textContent = fmt(SB()) + ' / ' + fmt(CFG.bb);
   $('hDiff').textContent = DIFF_NAME[CFG.diff];
   renderRanks();
-  startHand();
+  $('result').classList.remove('on');
+  render();                       // 테이블만 깔고, 시작 버튼을 누르면 첫 핸드가 돈다
 }
 
 function alivePlayers() { return G.players.filter((p) => !p.out); }
@@ -680,6 +683,17 @@ function showResult(res) {
   $('result').classList.add('on');
 }
 
+/** 테이블이 깔린 뒤 첫 핸드는 시작 버튼을 눌러야 돈다 (온라인은 방장만) */
+function showStartButton() {
+  const a = $('actions'); a.innerHTML = '';
+  if (MODE.net && !NET.host) { $('msg').textContent = '방장이 시작하길 기다리는 중입니다'; return; }
+  $('msg').textContent = MODE.net ? '모두 모였으면 시작을 누르세요' : '준비되면 시작을 누르세요';
+  const b = document.createElement('button');
+  b.className = 'abtn raise'; b.textContent = '시작';
+  b.onclick = () => { if (MODE.net) netSend({ t: 'deal' }); else startHand(); };
+  a.appendChild(b);
+}
+
 function showNextButton() {
   const a = $('actions'); a.innerHTML = '';
   const alive = G.players.filter((p) => p.stack > 0 && !p.out);
@@ -771,7 +785,6 @@ function netHandle(m) {
     if (G.stage !== 'showdown') $('result').classList.remove('on');
     render();
     if (G.stage === 'showdown') { showResult(RES); showNextButton(); }
-    else if (G.stage === 'over') gameOver();
   } else if (m.t === 'event') {
     if (m.name === 'action') announceAction(m.data);
     else if (m.name === 'stage') announceStage(m.data);
@@ -926,7 +939,7 @@ function render() {
     }
     d.appendChild(cards);
     const plate = document.createElement('div'); plate.className = 'plate';
-    plate.innerHTML = '<div class="nm">' + esc(p.name) + '</div><div class="ch num">' + fmt(p.stack) + '</div>';
+    plate.innerHTML = '<div class="nm">' + esc(p.name) + (p.styleLabel && !MODE.net ? ' <small class="sty">' + p.styleLabel + '</small>' : '') + '</div><div class="ch num">' + fmt(p.stack) + '</div>';
     d.appendChild(plate);
     if (idx === G.btn && !p.out) { const b = document.createElement('div'); b.className = 'dbtn'; b.textContent = 'D'; d.appendChild(b); }
     if (p.last) { const a = document.createElement('div'); a.className = 'act ' + actClass(p); a.textContent = p.last; d.appendChild(a); }
@@ -946,7 +959,7 @@ function render() {
   { const bub = bubbleFor(me.name); if (bub) $('hero').appendChild(bub); }
   const dealerMe = G.btn === 0 ? ' · 딜러' : '';
   $('heroName').textContent = (MODE.net ? esc(me.name) : '나') + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '');
-  if (me.hole.length && !me.out) {
+  if (me.hole.length && !me.out && me.hole[0]) {
     const bf = HE.bestFive(me.hole.concat(G.board));
     $('heroMade').innerHTML = '현재 <b>' + HE.handName(bf.score) + '</b>';
   } else $('heroMade').textContent = '';
@@ -967,6 +980,7 @@ function bestSet() {
 function renderActions() {
   const a = $('actions'); a.innerHTML = '';
   const me = G.players[0];
+  if (G.stage === 'idle' || G.stage === 'over') return showStartButton();
   if (G.toAct !== 0 || G.stage === 'showdown' || me.folded || me.out) {
     if (MODE.net && me.out) $('msg').innerHTML = '<b>관전 중</b> 칩을 모두 잃었습니다. 방장이 다시 시작하면 참여합니다.';
     else if (G.stage !== 'showdown') $('msg').textContent = G.toAct >= 0 ? G.players[G.toAct].name + ' 차례' : (MODE.net && G.stage === 'idle' ? '방장이 게임을 시작하면 카드가 옵니다' : '');
@@ -1016,6 +1030,8 @@ function renderActions() {
 /* ───────── 어드바이저 ───────── */
 function renderAdvisor() {
   const box = $('advBox');
+  if (MODE.net) { $('advState').textContent = 'OFF'; $('btnAdv').style.display = 'none'; box.innerHTML = '<div class="adv-off">온라인 대전에서는 어드바이저를 쓰지 않습니다.</div>'; return; }
+  $('btnAdv').style.display = '';
   $('advState').textContent = CFG.advisor ? 'ON' : 'OFF';
   if (!CFG.advisor) { box.innerHTML = '<div class="adv-off">어드바이저 꺼짐<br>설정에서 켤 수 있습니다.</div>'; return; }
   const me = G.players[0];
@@ -1196,7 +1212,7 @@ function buildOpts() {
     });
   };
   mk('optOpp', [1, 2, 3, 4, 5, 6, 7, 8].map((n) => [n, n + '명']), () => CFG.opp, (v) => CFG.opp = v);
-  mk('optDiff', [['easy', '초급', '느슨하게 콜'], ['normal', '중급', '확률 기반'], ['hard', '고수', '포지션·블러프']], () => CFG.diff, (v) => CFG.diff = v);
+  mk('optDiff', [['easy', '초급', '느슨하게 콜'], ['normal', '중급', '확률 기반'], ['hard', '고수', '위치·블러프'], ['pro', '프로', '3벳·트랩·세미블러프'], ['mix', '섞기', '봇마다 성향 다름']], () => CFG.diff, (v) => CFG.diff = v);
   mk('optAdv', [[true, '받기', '승률·추천 표시'], [false, '안받기', '혼자 판단']], () => CFG.advisor, (v) => CFG.advisor = v);
   mk('optSpeed', [['slow', '느리게', '흐름 파악용'], ['normal', '보통', ''], ['fast', '빠르게', '익숙해지면']], () => CFG.speed, (v) => CFG.speed = v);
   mk('optTurn', [[0, '무제한'], [5, '5초'], [10, '10초'], [15, '15초'], [30, '30초'], [60, '60초']], () => CFG.turn, (v) => CFG.turn = v);

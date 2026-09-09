@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test-engine.js && node test-game.js && node test-net.js",
+    "test": "node test-engine.js && node test-game.js && node test-bots.js && node test-net.js",
     "electron": "electron ."
   },
   "devDependencies": {

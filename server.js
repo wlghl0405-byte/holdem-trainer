@@ -23,7 +23,7 @@ const SPEEDS = {
   slow: { ai: 1500, stage: 1400 }, normal: { ai: 800, stage: 800 }, fast: { ai: 360, stage: 420 },
 };
 const OFFLINE_GRACE_MS = 6000;  // 접속이 끊긴 사람 차례는 이만큼 기다렸다가 자동 처리
-const NEXT_HAND_SEC = 6;        // 쇼다운 후 다음 핸드까지
+const NEXT_HAND_SEC = 3;        // 쇼다운 후 다음 핸드까지
 const ROOM_IDLE_MS = 3 * 3600 * 1000; // 아무 일도 없는 방은 3시간 뒤 정리
 
 /* ───────── 정적 파일 ───────── */
@@ -102,7 +102,7 @@ class Room {
     if (live.length < 2) return false;
     Object.assign(this.cfg, {
       stack: Math.max(100, Math.min(10000000, Math.round(+cfg.stack) || 10000)),
-      bb: 100, diff: ['easy', 'normal', 'hard'].includes(cfg.diff) ? cfg.diff : 'normal',
+      bb: 100, diff: ['easy', 'normal', 'hard', 'pro', 'mix'].includes(cfg.diff) ? cfg.diff : 'normal',
       speed: SPEEDS[cfg.speed] ? cfg.speed : 'slow',
       turn: [0, 5, 10, 15, 30, 60, 90, 120].includes(+cfg.turn) ? +cfg.turn : 30,
     });
@@ -112,8 +112,7 @@ class Room {
     this.seats.forEach((s, i) => { const p = this.table.addPlayer({ id: i, name: s.name, human: !s.bot, bot: s.bot, stack: this.cfg.stack }); p.online = s.online; s.player = p; });
     this.playing = true;
     this.broadcastLobby();
-    this.table.startHand();
-    this.drive();
+    this.drive();                 // 테이블만 깔림(stage idle). 방장이 '시작'을 누르면 deal
     return true;
   }
 
@@ -218,6 +217,10 @@ class Room {
     } else if (m.t === 'start') {
       if (!this.isHost(seat)) return send(seat.ws, { t: 'error', msg: '방장만 시작할 수 있습니다.' });
       if (!this.start(m.cfg || {})) send(seat.ws, { t: 'error', msg: '2명 이상 있어야 시작합니다.' });
+    } else if (m.t === 'deal') {
+      if (!this.isHost(seat)) return send(seat.ws, { t: 'error', msg: '방장만 시작할 수 있습니다.' });
+      if (!this.playing || (T.stage !== 'idle' && T.stage !== 'over')) return;
+      T.startHand(); this.drive();
     } else if (m.t === 'addBot') {
       if (!this.isHost(seat)) return;
       if (this.seats.length >= 8) return send(seat.ws, { t: 'error', msg: '최대 8명입니다.' });

@@ -63,7 +63,7 @@ function playHands(opts) {
   API.CFG.opp = opp; API.CFG.diff = diff; API.CFG.advisor = false;
   if (stack) API.CFG.stack = stack;
   if (bb) API.CFG.bb = bb;
-  API.newGame();
+  API.newGame(); API.startHand();
   drain();
   const G = API.G;
   const BASE = API.CFG.stack * (opp + 1);
@@ -151,7 +151,7 @@ API.CFG.stack = 10000; API.CFG.bb = 100;
 /* 블라인드/버튼 로테이션 확인 */
 {
   API.CFG.opp = 3; API.CFG.diff = 'normal'; API.CFG.advisor = false;
-  API.newGame(); drain();
+  API.newGame(); API.startHand(); drain();
   const btns = [];
   for (let i = 0; i < 6; i++) {
     btns.push(API.G.btn);

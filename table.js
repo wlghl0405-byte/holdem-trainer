@@ -31,7 +31,6 @@
     '서준', '하은', '시우', '유진', '준영', '다인', '성민', '채원', '재훈', '소율',
     '동현', '나은', '승우', '지안', '현우', '미르', '태윤', '은지', '우진', '세림',
   ];
-  const ITERS = { easy: 120, normal: 420, hard: 900 };
   const STAGES = ['preflop', 'flop', 'turn', 'river', 'showdown'];
   const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
 
@@ -75,7 +74,7 @@
     }
     addBots(n) {
       const names = pickNames(n, this.players.map((p) => p.name));
-      return names.map((name) => this.addPlayer({ name, human: false, bot: true }));
+      return names.map((name) => this.addPlayer({ name, human: false, bot: true, style: Table.styleFor(this.cfg.diff) }));
     }
     removePlayer(idx) {
       if (this.stage !== 'idle' && this.stage !== 'over') return false;
@@ -84,7 +83,7 @@
       return true;
     }
     resetPlayer(p) {
-      p.hole = []; p.bet = 0; p.committed = 0; p.folded = !!p.out; p.allIn = false; p.acted = false; p.last = ''; p.lastType = '';
+      p.hole = []; p.bet = 0; p.committed = 0; p.folded = !!p.out; p.allIn = false; p.acted = false; p.last = ''; p.lastType = ''; p.aggressor = false;
     }
 
     /* ───────── 조회 ───────── */
@@ -239,38 +238,120 @@
     }
 
     /* ───────── 봇 ───────── */
+    /**
+     * 봇 성향. 난이도를 고르면 모든 봇이 같은 성향, '섞기'는 봇마다 다르게 배정된다.
+     *   aggr  강한 손으로 베팅/레이즈하는 빈도    bluff 약한 손으로 베팅하는 빈도
+     *   stub  콜 기준 배율(클수록 잘 접음, 1보다 작으면 콜링스테이션)   cbet  프리플랍 공격자가 플랍에 이어서 베팅하는 빈도
+     *   trap  아주 강할 때 체크로 숨기는 빈도       noise 엉뚱한 실수 빈도
+     *   range 프리플랍에서 참여하는 손 (위치별)     iters 승률 계산 정밀도
+     */
+    static get STYLES() {
+      return {
+        easy:   { label: '초급',  aggr: 0.15, bluff: 0.03, stub: 0.62, cbet: 0.20, trap: 0.00, noise: 0.25, size: 0.5, iters: 120,  range: { early: 'SABCD', late: 'SABCD', blind: 'SABCD' }, raise: 'S', threebet: '' },
+        normal: { label: '중급',  aggr: 0.45, bluff: 0.10, stub: 0.95, cbet: 0.50, trap: 0.10, noise: 0.10, size: 0.6, iters: 420,  range: { early: 'SABC', late: 'SABC', blind: 'SABCD' }, raise: 'SA', threebet: 'S' },
+        hard:   { label: '고수',  aggr: 0.65, bluff: 0.16, stub: 1.05, cbet: 0.65, trap: 0.20, noise: 0.06, size: 0.7, iters: 900,  range: { early: 'SAB', late: 'SABC', blind: 'SABC' }, raise: 'SAB', threebet: 'SA' },
+        pro:    { label: '프로',  aggr: 0.80, bluff: 0.20, stub: 1.10, cbet: 0.75, trap: 0.30, noise: 0.03, size: 0.75, iters: 1200, range: { early: 'SAB', late: 'SABC', blind: 'SABC' }, raise: 'SAB', threebet: 'SA' },
+        maniac: { label: '공격형', aggr: 0.90, bluff: 0.35, stub: 0.75, cbet: 0.90, trap: 0.05, noise: 0.10, size: 1.0, iters: 700,  range: { early: 'SABC', late: 'SABCD', blind: 'SABCD' }, raise: 'SABC', threebet: 'SAB' },
+        rock:   { label: '수비형', aggr: 0.35, bluff: 0.02, stub: 1.25, cbet: 0.40, trap: 0.35, noise: 0.05, size: 0.6, iters: 900,  range: { early: 'SA', late: 'SAB', blind: 'SAB' }, raise: 'SA', threebet: 'S' },
+      };
+    }
+    static styleFor(diff) {
+      const S = Table.STYLES;
+      if (diff === 'mix') { const pool = ['normal', 'hard', 'pro', 'maniac', 'rock']; return pool[(Math.random() * pool.length) | 0]; }
+      return S[diff] ? diff : 'normal';
+    }
+
+    /** 위치: 0=버튼, 1=SB, 2=BB, 그 뒤가 앞자리(early) */
+    position(i) {
+      const n = this.alive().length;
+      const order = [];
+      let k = this.btn;
+      for (let c = 0; c < this.players.length; c++) { if (!this.players[k].out) order.push(k); k = (k + 1) % this.players.length; }
+      const pos = order.indexOf(i);           // 0=버튼 … n-1=버튼 바로 앞(컷오프)
+      if (n <= 3) return pos === 0 ? 'late' : 'blind';
+      if (pos === 1 || pos === 2) return 'blind';
+      if (pos === 0 || pos === n - 1) return 'late';
+      return 'early';
+    }
+
     botAct(i) {
       const p = this.players[i];
       if (!p || p.folded || p.allIn || p.out || i !== this.toAct) { this.toAct = this.nextActor(this.toAct); this.settle(); return false; }
-      const diff = this.cfg.diff || 'normal';
+      const st = Table.STYLES[p.style] || Table.STYLES[Table.styleFor(this.cfg.diff)];
+      const R = Math.random;
+      const bb = this.cfg.bb;
       const opp = Math.max(1, this.inHand().length - 1);
       const toCall = this.maxBet - p.bet;
       const pot = this.potTotal();
       const potOdds = toCall > 0 ? toCall / (pot + toCall) : 0;
-      let eq = HE.equity(p.hole, this.board, opp, ITERS[diff] || 420);
-      const R = Math.random();
-      const bluff = diff === 'easy' ? 0.03 : diff === 'normal' ? 0.10 : 0.18;
-      if (diff === 'hard') {
-        const seatsAfter = (i - this.btn + this.players.length) % this.players.length;
-        eq += seatsAfter <= 1 ? 0.03 : -0.02;
-        if (opp >= 3) eq -= 0.04;
+      const maxTo = p.bet + p.stack;
+      const short = p.stack + p.bet <= bb * 10;                       // 짧은 스택: 밀거나 접거나
+      const act = (type, amount) => {
+        if (type === 'check' && toCall > 0) type = 'call';
+        if (type === 'raise' && (amount == null || amount <= this.maxBet)) type = toCall > 0 ? 'call' : 'check';
+        return this.doAction(i, type, amount);
+      };
+      const raiseTo = (frac) => {                                      // 팟 대비 크기로 레이즈 목표 계산
+        const size = Math.max(this.minRaise, Math.round((pot + toCall) * frac / bb) * bb, bb);
+        return Math.min(maxTo, this.maxBet + size);
+      };
+      // 실수(노이즈): 가끔 엉뚱하게 콜하거나 접는다
+      if (R() < st.noise) return act(toCall > 0 ? (R() < 0.6 ? 'call' : 'fold') : 'check');
+
+      /* ── 프리플랍: 손 등급과 위치로 참여 여부 ── */
+      if (this.stage === 'preflop') {
+        const hc = HE.handClass(p.hole);
+        const pos = this.position(i);
+        const playable = st.range[pos].includes(hc.tier);
+        const raised = this.maxBet > bb;                               // 누군가 이미 레이즈
+        const bigRaise = this.maxBet >= bb * 4;
+        if (short) {                                                   // 짧은 스택: 좋은 손이면 올인, 아니면 접기(공짜면 체크)
+          if ('SA'.includes(hc.tier) || (hc.tier === 'B' && !bigRaise)) return act('raise', maxTo);
+          return act(toCall > 0 ? 'fold' : 'check');
+        }
+        if (!playable) return act(toCall > 0 ? 'fold' : 'check');
+        if (!raised) {
+          if (st.raise.includes(hc.tier) && R() < st.aggr + 0.15) { p.aggressor = true; return act('raise', raiseTo(R() < 0.5 ? 0.8 : 1.0)); }
+          return act(toCall > 0 ? 'call' : 'check');
+        }
+        // 레이즈에 맞서서: 3벳 손이면 다시 올리고, 참여 손이면 콜, 너무 크면 접기
+        if (st.threebet.includes(hc.tier) && R() < st.aggr) { p.aggressor = true; return act('raise', raiseTo(1.0)); }
+        if (bigRaise && !'SA'.includes(hc.tier) && R() < 0.75) return act('fold');
+        if (hc.tier === 'S' && R() < 0.6) { p.aggressor = true; return act('raise', raiseTo(1.0)); }
+        return act('call');
       }
-      if (diff === 'easy') eq = eq * 0.75 + 0.18;
-      const bb = this.cfg.bb;
-      const potBet = Math.max(bb, Math.round(pot * (diff === 'hard' ? (R < 0.3 ? 0.75 : 0.5) : 0.6) / bb) * bb);
-      const raiseTo = Math.min(p.bet + p.stack, this.maxBet + Math.max(this.minRaise, potBet));
+
+      /* ── 플랍 이후: 승률·아웃츠·보드 상태 ── */
+      let eq = HE.equity(p.hole, this.board, opp, st.iters);
+      const ou = HE.outs(p.hole, this.board);
+      const left = 5 - this.board.length;
+      const drawP = ou.n && left ? Math.min(0.9, ou.n * (left >= 2 ? 4 : 2) / 100) : 0;
+      const draw = ou.n >= 8 && left > 0;                              // 플러시·양방 스트레이트급 드로우
+      const tex = HE.boardTexture(this.board);
+      const wet = tex.flush >= 3 || tex.straight >= 3;
+      const sizeFrac = wet ? Math.min(1.0, st.size + 0.25) : st.size;
+      if (opp >= 3) eq -= 0.03;
+
       if (toCall === 0) {
-        const betThreshold = diff === 'easy' ? 0.72 : diff === 'normal' ? 0.60 : 0.55;
-        if (eq > betThreshold && R < 0.82) return this.doAction(i, 'raise', raiseTo);
-        if (R < bluff && this.stage !== 'preflop') return this.doAction(i, 'raise', raiseTo);
-        return this.doAction(i, 'check');
+        // 아주 강함: 가끔 트랩(체크), 아니면 베팅
+        if (eq > 0.80) { if (R() < st.trap && this.canAct().length > 1) return act('check'); return act('raise', raiseTo(sizeFrac)); }
+        if (eq > 0.62 && R() < st.aggr + 0.1) return act('raise', raiseTo(sizeFrac));
+        if (p.aggressor && this.stage === 'flop' && eq > 0.35 && R() < st.cbet) return act('raise', raiseTo(0.55));   // 컨티뉴 벳
+        if (draw && R() < st.aggr * 0.6) return act('raise', raiseTo(0.6));                                            // 세미블러프
+        if (!draw && eq < 0.4 && R() < st.bluff && this.stage !== 'river') return act('raise', raiseTo(0.6));         // 순수 블러프
+        return act('check');
       }
-      const need = potOdds * (diff === 'easy' ? 0.62 : diff === 'normal' ? 0.95 : 1.05);
-      const raiseThreshold = diff === 'easy' ? 0.80 : diff === 'normal' ? 0.68 : 0.62;
-      if (eq > raiseThreshold && R < 0.7 && p.stack > toCall) return this.doAction(i, 'raise', raiseTo);
-      if (eq >= need) return this.doAction(i, 'call');
-      if (R < bluff * 0.5 && p.stack > toCall * 3) return this.doAction(i, 'raise', raiseTo);
-      return this.doAction(i, 'fold');
+
+      // 콜이 필요한 상황
+      const need = potOdds * st.stub;
+      const raiseEq = p.style === 'pro' || p.style === 'maniac' ? 0.60 : 0.68;
+      if (short) { if (eq > 0.5 || (draw && drawP >= 0.3)) return act('raise', maxTo); return act('fold'); }
+      if (eq > raiseEq && R() < st.aggr) return act('raise', raiseTo(sizeFrac));
+      if (draw && drawP < potOdds && R() < st.bluff * 0.7 && p.stack > toCall * 4) return act('raise', raiseTo(0.8)); // 드로우로 되치기
+      if (eq >= need) return act('call');
+      if (draw && drawP >= potOdds * 0.85 && p.stack > toCall * 2) return act('call');                                // 아웃츠 콜
+      if (R() < st.bluff * 0.3 && p.stack > toCall * 3 && this.stage !== 'river') return act('raise', raiseTo(0.8)); // 가끔 블러프 레이즈
+      return act('fold');
     }
 
     /* ───────── 핸드 종료 ───────── */
@@ -344,7 +425,7 @@
         const p = this.players[(seat + k) % n];
         const reveal = k === 0 || (this.showAll && !p.folded);
         players.push({
-          id: p.id, name: p.name, human: p.human, bot: !!p.bot, online: p.online !== false,
+          id: p.id, name: p.name, human: p.human, bot: !!p.bot, online: p.online !== false, style: p.style || '', styleLabel: p.style && Table.STYLES[p.style] ? Table.STYLES[p.style].label : '',
           stack: p.stack, bet: p.bet, committed: p.committed, folded: p.folded, allIn: p.allIn, out: p.out,
           acted: p.acted, last: p.last, lastType: p.lastType, handStart: p.handStart,
           hole: reveal ? p.hole.slice() : p.hole.map(() => null),

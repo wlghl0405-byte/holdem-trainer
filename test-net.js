@@ -84,7 +84,11 @@ function checkView(v, base, label) {
 
   // 시작
   const STACK = 5000, BASE = STACK * 3;
-  A.send({ t: 'start', cfg: { stack: STACK, bb: 100, diff: 'normal', speed: 'fast', turn: 5 } });
+  A.send({ t: 'start', cfg: { stack: STACK, bb: 100, diff: 'normal', speed: 'fast', turn: 5 } }); await sleep(200);
+  ok(A.lastView && A.lastView.stage === 'idle' && A.lastView.players.length === 3, '시작 전 테이블만 깔림(idle)');
+  B.send({ t: 'deal' }); await sleep(100);
+  ok(A.lastView.stage === 'idle', '방장 아닌 사람의 시작 무시');
+  A.send({ t: 'deal' });
   const t0 = Date.now();
   while ((A.lastView ? A.lastView.handNo : 0) < 3 && Date.now() - t0 < 40000) await sleep(100);
   ok(A.lastView && A.lastView.handNo >= 3, '3핸드 이상 진행 (' + (A.lastView ? A.lastView.handNo : 0) + '핸드)');
