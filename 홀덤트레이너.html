@@ -355,6 +355,9 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .bubble::after{content:'';position:absolute;left:50%;top:100%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#F6F4EC}
 .bubble.emote{font-size:22px;padding:4px 8px;border-radius:14px}
 .hero{position:relative}
+.awaybox{display:flex;gap:5px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.awaylb{font-size:11px;color:var(--mute);margin-right:2px}
+.seat .away{position:absolute;left:50%;top:-10px;transform:translateX(-50%);background:#3B2D20;color:#EBD9A0;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;border:1px solid var(--rail-hi)}
 /* ── 온라인 설정·로비 ── */
 .mtab{display:flex;gap:6px;margin:0 0 12px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:4px}
 .mtab button{flex:1;padding:8px;border-radius:7px;font-size:13px;font-weight:650;color:var(--ink-2)}
@@ -415,6 +418,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
           <div class="nm" id="heroName">나</div>
           <div class="ch num" id="heroStack">0</div>
           <div class="made" id="heroMade"></div>
+          <div class="awaybox" id="awayBox"></div>
         </div>
       </div>
 
@@ -1320,7 +1324,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
         const p = this.players[(seat + k) % n];
         const reveal = k === 0 || (this.showAll && !p.folded);
         players.push({
-          id: p.id, name: p.name, human: p.human, bot: !!p.bot, online: p.online !== false, style: p.style || '', styleLabel: p.style && Table.STYLES[p.style] ? Table.STYLES[p.style].label : '',
+          id: p.id, name: p.name, human: p.human, bot: !!p.bot, online: p.online !== false, style: p.style || '', styleLabel: p.style && Table.STYLES[p.style] ? Table.STYLES[p.style].label : '', away: p.away || '',
           stack: p.stack, bet: p.bet, committed: p.committed, folded: p.folded, allIn: p.allIn, out: p.out,
           acted: p.acted, last: p.last, lastType: p.lastType, handStart: p.handStart,
           hole: reveal ? p.hole.slice() : p.hole.map(() => null),
@@ -1557,6 +1561,17 @@ function showResult(res) {
 }
 
 /** 테이블이 깔린 뒤 첫 핸드는 시작 버튼을 눌러야 돈다 (온라인은 방장만) */
+/** 자리 비움 설정 (온라인 전용) */
+function setAway(mode) { netSend({ t: 'away', mode }); }
+function renderAwayBox() {
+  const box = $('awayBox'); if (!box) return;
+  const me = G.players[0];
+  if (!MODE.net || !me || me.out || me.away) { box.innerHTML = ''; return; }
+  box.innerHTML = '<span class="awaylb">잠시 자리를 비우면</span><button class="opt small" id="btnAwayFold">자리 비움</button><button class="opt small" id="btnAwayBot">AI에게 맡기기</button>';
+  $('btnAwayFold').onclick = () => setAway('fold');
+  $('btnAwayBot').onclick = () => setAway('bot');
+}
+
 function showStartButton() {
   const a = $('actions'); a.innerHTML = '';
   if (MODE.net && !NET.host) { $('msg').textContent = '방장이 시작하길 기다리는 중입니다'; return; }
@@ -1697,7 +1712,7 @@ function renderLobby() {
   let html = '<div class="lobbyhead"><span>방 코드 <b class="code">' + esc(NET.code) + '</b></span>' +
     '<span class="lobbybtns"><button class="opt small" id="btnShare">카톡으로 보내기</button><button class="opt small" id="btnCopy">링크 복사</button></span></div>';
   html += '<div class="plist">' + (L.players || []).map((p, i) =>
-    '<div class="prow' + (p.online === false ? ' off' : '') + '"><span class="pn">' + esc(p.name) + (p.host ? ' <em>방장</em>' : '') + (p.bot ? ' <em>봇</em>' : '') + (p.online === false ? ' <em>오프라인</em>' : '') + '</span>' +
+    '<div class="prow' + (p.online === false ? ' off' : '') + '"><span class="pn">' + esc(p.name) + (p.host ? ' <em>방장</em>' : '') + (p.bot ? ' <em>봇</em>' : '') + (p.online === false ? ' <em>오프라인</em>' : '') + (p.away ? ' <em>' + (p.away === 'bot' ? 'AI 대리' : '자리 비움') + '</em>' : '') + '</span>' +
     (NET.host && (p.bot || i !== 0) && !L.playing ? '<button class="opt small" data-kick="' + i + '">내보내기</button>' : '') + '</div>').join('') + '</div>';
   if (NET.host) {
     html += '<div class="lobbyctl">' +
@@ -1822,6 +1837,7 @@ function render() {
     plate.innerHTML = '<div class="nm">' + esc(p.name) + (p.styleLabel && p.bot ? ' <small class="sty">' + p.styleLabel + '</small>' : '') + '</div><div class="ch num">' + fmt(p.stack) + '</div>';
     d.appendChild(plate);
     if (idx === G.btn && !p.out) { const b = document.createElement('div'); b.className = 'dbtn'; b.textContent = 'D'; d.appendChild(b); }
+    if (p.away) { const aw = document.createElement('div'); aw.className = 'away'; aw.textContent = p.away === 'bot' ? 'AI 대리' : '자리 비움'; d.appendChild(aw); }
     if (p.last) { const a = document.createElement('div'); a.className = 'act ' + actClass(p); a.textContent = p.last; d.appendChild(a); }
     if (p.bet > 0) { const bt = document.createElement('div'); bt.className = 'bet num'; bt.textContent = fmt(p.bet); d.appendChild(bt); }
     const bub = bubbleFor(p.name); if (bub) d.appendChild(bub);
@@ -1860,6 +1876,12 @@ function bestSet() {
 function renderActions() {
   const a = $('actions'); a.innerHTML = '';
   const me = G.players[0];
+  renderAwayBox();
+  if (MODE.net && me.away) {
+    $('msg').innerHTML = me.away === 'bot' ? '<b>AI 대리 중</b> 봇이 내 패로 대신 플레이합니다.' : '<b>자리 비움 중</b> 내 차례는 자동으로 체크 또는 폴드됩니다.';
+    const b = document.createElement('button'); b.className = 'abtn raise'; b.textContent = '돌아오기'; b.onclick = () => setAway(''); a.appendChild(b);
+    return;
+  }
   if (G.stage === 'idle' || G.stage === 'over') return showStartButton();
   if (G.toAct !== 0 || G.stage === 'showdown' || me.folded || me.out) {
     if (MODE.net && me.out) $('msg').innerHTML = '<b>관전 중</b> 칩을 모두 잃었습니다. 방장이 다시 시작하면 참여합니다.';

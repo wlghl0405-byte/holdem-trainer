@@ -69,7 +69,7 @@ class Room {
   lobbyMsg(forSeat) {
     return {
       t: 'lobby', playing: this.playing, cfg: this.cfg, host: this.isHost(forSeat),
-      players: this.seats.map((s) => ({ name: s.name, bot: !!s.bot, host: this.isHost(s), online: s.bot ? true : !!s.online })),
+      players: this.seats.map((s) => ({ name: s.name, bot: !!s.bot, host: this.isHost(s), online: s.bot ? true : !!s.online, away: s.away || '' })),
     };
   }
   broadcastLobby() { this.seats.forEach((s) => { if (!s.bot) send(s.ws, this.lobbyMsg(s)); }); }
@@ -155,16 +155,28 @@ class Room {
     const sp = SPEEDS[this.cfg.speed] || SPEEDS.slow;
     if (p === 'bot') this.timer = setTimeout(() => { T.next(); this.drive(); }, sp.ai);
     else if (p === 'stage') this.timer = setTimeout(() => { T.next(); this.drive(); }, sp.stage);
-    else if (p === 'human') this.armTurnClock();
+    else if (p === 'human') {
+      const seat = this.seats.find((x) => x.player === T.players[T.toAct]);
+      if (seat && seat.away === 'bot') this.timer = setTimeout(() => { T.botAct(T.toAct); this.drive(); }, sp.ai);       // AI 대리
+      else if (seat && seat.away === 'fold') this.timer = setTimeout(() => this.autoAct(), 900);                        // 자리 비움: 체크/폴드
+      else this.armTurnClock();
+    }
     else if (p === 'showdown') this.armNextHand();
     else if (p === 'over') this.gameOver();
+  }
+
+  /** 차례인 사람을 대신해 체크 또는 폴드 */
+  autoAct() {
+    const T = this.table; const seatIdx = T.toAct; const p = T.players[seatIdx];
+    if (!p) return;
+    const toCall = T.maxBet - p.bet; T.doAction(seatIdx, toCall > 0 ? 'fold' : 'check'); this.drive();
   }
 
   armTurnClock() {
     const T = this.table;
     const seatIdx = T.toAct; const p = T.players[seatIdx];
     const s = this.seats.find((x) => x.player === p);
-    const auto = () => { if (T.toAct !== seatIdx) return; const toCall = T.maxBet - p.bet; T.doAction(seatIdx, toCall > 0 ? 'fold' : 'check'); this.drive(); };
+    const auto = () => { if (T.toAct !== seatIdx) return; this.autoAct(); };
     if (!s || s.leave || !s.online) { this.timer = setTimeout(auto, OFFLINE_GRACE_MS); return; }
     const limit = this.cfg.turn;
     if (!limit) return;                                   // 무제한
@@ -240,6 +252,17 @@ class Room {
       this.removeSeat(target);
       if (!target.bot && target.ws) { try { target.ws.close(); } catch (e) {} }
       this.broadcastLobby();
+    } else if (m.t === 'away') {
+      // 자리 비움: 'fold'(자동 체크/폴드) · 'bot'(AI 대리) · 그 외(복귀)
+      const mode = m.mode === 'fold' || m.mode === 'bot' ? m.mode : '';
+      seat.away = mode;
+      if (seat.player) { seat.player.away = mode; if (mode === 'bot') seat.player.style = TB.Table.styleFor(this.cfg.diff); }
+      this.broadcastLobby();
+      if (this.playing) {
+        this.dirty = true;
+        if (T.toAct >= 0 && T.players[T.toAct] === seat.player) this.drive();   // 지금 내 차례면 즉시 처리 방식 전환
+        else this.broadcastState();
+      }
     } else if (m.t === 'chat') {
       const text = String(m.text || '').trim().slice(0, 80);
       const now = Date.now();

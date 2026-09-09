@@ -429,7 +429,7 @@
         const p = this.players[(seat + k) % n];
         const reveal = k === 0 || (this.showAll && !p.folded);
         players.push({
-          id: p.id, name: p.name, human: p.human, bot: !!p.bot, online: p.online !== false, style: p.style || '', styleLabel: p.style && Table.STYLES[p.style] ? Table.STYLES[p.style].label : '',
+          id: p.id, name: p.name, human: p.human, bot: !!p.bot, online: p.online !== false, style: p.style || '', styleLabel: p.style && Table.STYLES[p.style] ? Table.STYLES[p.style].label : '', away: p.away || '',
           stack: p.stack, bet: p.bet, committed: p.committed, folded: p.folded, allIn: p.allIn, out: p.out,
           acted: p.acted, last: p.last, lastType: p.lastType, handStart: p.handStart,
           hole: reveal ? p.hole.slice() : p.hole.map(() => null),

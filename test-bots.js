@@ -56,12 +56,13 @@ function tourney(styles, hands) {
   return net;
 }
 
-console.log('봇 성향 검증 (각 300핸드)');
+console.log('봇 성향 검증 (프로 대결은 2×400핸드 합산, 나머지 300핸드)');
+const twice = (styles, hands) => { const a = tourney(styles, hands), b = tourney(styles, hands); const o = {}; Object.keys(a).forEach((k) => { o[k] = a[k] + b[k]; }); return o; };
 const t0 = Date.now();
-const r1 = tourney(['pro', 'pro', 'easy', 'easy'], 300);
+const r1 = twice(['pro', 'pro', 'easy', 'easy'], 400);
 console.log('  · 프로 vs 초급:', JSON.stringify(r1));
 ok(r1.pro > r1.easy, '프로 2명이 초급 2명보다 많이 땀');
-const r2 = tourney(['pro', 'pro', 'normal', 'normal'], 300);
+const r2 = twice(['pro', 'pro', 'normal', 'normal'], 400);
 console.log('  · 프로 vs 중급:', JSON.stringify(r2));
 ok(r2.pro > r2.normal, '프로가 중급보다 많이 땀');
 const r3 = tourney(['hard', 'hard', 'easy', 'easy'], 300);

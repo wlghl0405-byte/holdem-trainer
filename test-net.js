@@ -124,6 +124,16 @@ function checkView(v, base, label) {
   ok(A.lastView.handNo >= h1 + 1, '무응답 상대가 있어도 제한 시간 뒤 진행 (' + h1 + '→' + A.lastView.handNo + ')');
   ok(!B2.errors.length, '복귀 클라이언트 오류 없음' + (B2.errors.length ? ': ' + B2.errors.join(' | ') : ''));
 
+  // 자리 비움: B2가 AI 대리로 두면 액션 없이도 핸드가 진행되고, 복귀하면 다시 차례가 온다
+  B2.autoplay = false; B2.send({ t: 'away', mode: 'bot' }); await sleep(200);
+  ok(A.lobby.players.find((p) => p.name === '영희').away === 'bot', '로비에 AI 대리 표시');
+  const h2 = A.lastView.handNo, acted2 = B2.acted;
+  const t2 = Date.now();
+  while (Date.now() - t2 < 40000 && A.lastView.handNo < h2 + 2) await sleep(100);
+  ok(A.lastView.handNo >= h2 + 2 && B2.acted === acted2, 'AI 대리 중 액션 없이 2핸드 진행 (' + h2 + '→' + A.lastView.handNo + ')');
+  B2.send({ t: 'away', mode: '' }); await sleep(200);
+  ok(A.lobby.players.find((p) => p.name === '영희').away === '', '복귀');
+
   // 방장 나가면 방장 이양
   B2.autoplay = true;
   A.send({ t: 'leave' }); await sleep(300);
