@@ -994,10 +994,10 @@ function renderActions() {
     const box = document.createElement('div'); box.className = 'betbox';
     const sizes = [
       ['삥', minTo],
+      G.maxBet > 0 ? ['따당', G.maxBet * 2] : null,
       ['쿼터', G.maxBet + Math.round((pot + toCall) / 4)],
       ['하프', G.maxBet + Math.round((pot + toCall) / 2)],
       ['풀', G.maxBet + pot + toCall],
-      G.maxBet > 0 ? ['따당', G.maxBet * 2] : null,
     ].filter(Boolean).map(([l, v]) => [l, snap(v)]);
     const seen = new Set();
     sizes.forEach(([l, v]) => {
