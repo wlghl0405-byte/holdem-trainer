@@ -1763,14 +1763,14 @@ function renderLobby() {
   html += '<div class="lobbyrow">' +
     (NET.host && !L.playing ? '<button class="opt small" id="btnBot">봇 추가</button>' : '') +
     '<button class="opt small" id="btnLeave">방 나가기</button>' +
-    '<span class="lobbynote">' + (L.playing ? '게임 진행 중' : NET.host ? ((L.players || []).length < 2 ? '2명 이상 모이면 시작할 수 있습니다' : '모두 모였으면 아래 게임 시작을 누르세요') : '방장이 시작하길 기다리는 중입니다') + '</span></div>';
+    '<span class="lobbynote">' + (L.playing ? '게임 진행 중' : NET.host ? ((L.players || []).length < 2 ? '친구가 들어오면 시작 버튼이 나타납니다 (봇만 넣고 해도 됩니다)' : '모두 모였으면 아래 게임 시작을 누르세요') : '방장이 시작하길 기다리는 중입니다') + '</span></div>';
   box.innerHTML = html;
   // 맨 아래 큰 버튼
-  if (NET.host || L.playing) {
+  const enough = (L.players || []).length >= 2;
+  if (L.playing || (NET.host && enough)) {          // 혼자일 땐 버튼이 없고, 누군가 들어오면 나타난다
     const b = document.createElement('button');
     b.className = 'start';
     b.textContent = L.playing ? '테이블로' : '게임 시작';
-    b.disabled = !L.playing && (L.players || []).length < 2;
     b.onclick = () => {
       if (L.playing) { $('ov').classList.remove('on'); if (!NET.seated) $('msg').innerHTML = '<b>대기 중</b> 지금 핸드가 끝나면 다음 핸드부터 참여합니다. 채팅은 바로 할 수 있습니다.'; return; }
       clampStake();
