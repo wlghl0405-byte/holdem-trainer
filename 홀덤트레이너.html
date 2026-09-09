@@ -1863,7 +1863,8 @@ function renderActions() {
   if (G.stage === 'idle' || G.stage === 'over') return showStartButton();
   if (G.toAct !== 0 || G.stage === 'showdown' || me.folded || me.out) {
     if (MODE.net && me.out) $('msg').innerHTML = '<b>관전 중</b> 칩을 모두 잃었습니다. 방장이 다시 시작하면 참여합니다.';
-    else if (G.stage !== 'showdown') $('msg').textContent = G.toAct >= 0 ? G.players[G.toAct].name + ' 차례' : (MODE.net && G.stage === 'idle' ? '방장이 게임을 시작하면 카드가 옵니다' : '');
+    else if (G.stage === 'showdown') { if (REVEAL.on) $('msg').textContent = '쇼다운 · 패를 공개합니다'; }
+    else $('msg').textContent = G.toAct >= 0 ? G.players[G.toAct].name + ' 차례' : (MODE.net && G.stage === 'idle' ? '방장이 게임을 시작하면 카드가 옵니다' : '');
     return;
   }
   const toCall = G.maxBet - me.bet;
