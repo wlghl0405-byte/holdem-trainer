@@ -4,6 +4,9 @@
  * 사람 없이 table.js만으로 진행하므로 빠르다.
  */
 const TB = require('./table.js');
+// 재현 가능한 검증을 위해 고정 시드 난수 사용 (게임 코드는 Math.random만 쓴다)
+let seed = 20260909;
+Math.random = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let x = Math.imul(seed ^ seed >>> 15, 1 | seed); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; };
 let pass = 0, fail = 0;
 const ok = (c, msg) => { if (c) pass++; else { fail++; console.log('  ✗ ' + msg); } };
 
@@ -56,8 +59,8 @@ function tourney(styles, hands) {
   return net;
 }
 
-console.log('봇 성향 검증 (대결은 2×400핸드 합산, 섞기 300핸드)');
-const twice = (styles, hands) => { const a = tourney(styles, hands), b = tourney(styles, hands); const o = {}; Object.keys(a).forEach((k) => { o[k] = a[k] + b[k]; }); return o; };
+console.log('봇 성향 검증 (대결은 3×400핸드 합산, 섞기 300핸드, 고정 시드)');
+const twice = (styles, hands) => { const o = {}; for (let i = 0; i < 3; i++) { const a = tourney(styles, hands); Object.keys(a).forEach((k) => { o[k] = (o[k] || 0) + a[k]; }); } return o; };
 const t0 = Date.now();
 const r1 = twice(['pro', 'pro', 'easy', 'easy'], 400);
 console.log('  · 프로 vs 초급:', JSON.stringify(r1));
