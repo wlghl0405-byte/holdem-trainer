@@ -11,8 +11,6 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <title>육지덤</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <style>
 :root{
@@ -28,16 +26,14 @@
 html,body{margin:0;padding:0;height:100%}
 body{
   background:var(--bg); color:var(--ink); overflow:hidden;
-  font-family:"Noto Sans KR","Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
   font-size:14px; line-height:1.5; letter-spacing:-.01em; word-break:keep-all; -webkit-font-smoothing:antialiased;
 }
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;padding:0}
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 /* 서체: Noto Sans KR (없으면 시스템 고딕) */
 .seat .act{line-height:1.25;display:inline-flex;align-items:center;gap:3px}
-.seat .bet{display:inline-flex;align-items:center;line-height:1}
 .seat .plate .nm{line-height:1.3}
-.abtn{line-height:1.2;display:inline-flex;align-items:center;justify-content:center;gap:4px}
 .msg .pill{line-height:1.3}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
 
@@ -97,12 +93,8 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 @keyframes turnpulse{0%,100%{box-shadow:0 0 0 3px var(--gold-soft),0 0 10px rgba(201,162,39,.2)}50%{box-shadow:0 0 0 4px rgba(201,162,39,.45),0 0 24px rgba(201,162,39,.65)}}
 .seat.turn .plate{animation:turnpulse 1.3s ease-in-out infinite}
 .hero.turn .cards .card{box-shadow:0 0 0 2px var(--gold),0 0 20px rgba(201,162,39,.55)}
-@keyframes heropulse{0%,100%{box-shadow:0 0 0 0 rgba(201,162,39,0)}50%{box-shadow:0 0 0 6px rgba(201,162,39,.12)}}
-.hero.turn{border-radius:16px;animation:heropulse 1.3s ease-in-out infinite}
 @keyframes badgepop{0%{opacity:0;transform:translateX(-50%) scale(.3)}70%{transform:translateX(-50%) scale(1.15)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
-.seat .bet.pop,.seat .act.pop{animation:badgepop .32s cubic-bezier(.2,.9,.3,1.2) both}
-.seat .bet::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px;
-  background:radial-gradient(circle at 50% 50%,#F3D77A 0 30%,#C9A227 31% 60%,#8A6A12 61%);box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.seat .act.pop{animation:actpop .3s both}
 @keyframes potbump{0%{transform:scale(1)}40%{transform:scale(1.28);text-shadow:0 0 18px rgba(201,162,39,.9)}100%{transform:scale(1)}}
 .pot.bump{display:inline-block;animation:potbump .45s cubic-bezier(.2,.9,.3,1.2)}
 @keyframes allinflash{0%,100%{box-shadow:0 0 0 0 rgba(192,72,60,0)}50%{box-shadow:0 0 0 5px rgba(192,72,60,.35),0 0 22px rgba(192,72,60,.9)}}
@@ -135,7 +127,7 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .ann.rebuy small{font-size:11.5px;color:var(--ink-2);margin-left:6px;font-weight:600}
 .abtn.raise:hover,.abtn.call:hover{box-shadow:0 0 18px rgba(201,162,39,.45);filter:brightness(1.06)}
 .abtn.allin:hover{box-shadow:0 0 18px rgba(192,72,60,.5)}
-.felt::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.07),transparent 55%);transition:box-shadow .6s}
+.felt::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;transition:box-shadow .6s}
 /* 올인 쇼다운: 조명을 낮추고 가운데만 밝게, 마지막 카드 전엔 테이블이 두근거린다 */
 .felt.drama::after{box-shadow:inset 0 0 180px 90px rgba(0,0,0,.82);background:radial-gradient(ellipse at 50% 50%,rgba(255,240,200,.10),transparent 45%)}
 .felt.drama .seat{filter:brightness(.75)}
@@ -201,36 +193,39 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 @media (prefers-reduced-motion:reduce){.rcard{animation:none}}
 
 /* 좌석 */
-.seat{position:absolute;transform:translate(-50%,-50%);width:120px;text-align:center;z-index:2}
+.seat{position:absolute;transform:translate(-50%,-50%);width:132px;text-align:center;z-index:2}
 .seat .cards{display:flex;gap:4px;justify-content:center;margin-bottom:5px;min-height:54px}
-.seat .plate{background:rgba(8,14,12,.82);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:5px 8px}
+.seat .plate{background:rgba(8,14,12,.86);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:0;overflow:hidden}
+.seat .plate .nm{padding:5px 8px 0}
+.seat .plate .ch{padding:0 8px 5px}
 .seat .nm{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .seat .ch{font-size:12.5px;font-weight:750;color:var(--gold);margin-top:1px}
 .seat.turn .plate{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
 .seat.folded{opacity:.4}
 .seat.out{opacity:.22;filter:grayscale(1)}
-.seat .act{position:absolute;left:50%;transform:translateX(-50%);bottom:-23px;font-size:12px;font-weight:800;
-  padding:3px 11px;border-radius:999px;background:rgba(10,16,14,.92);border:1.5px solid var(--line-2);white-space:nowrap;
-  box-shadow:0 3px 10px rgba(0,0,0,.45)}
-.seat .act.fold{color:var(--mute);border-color:var(--line)}
-.seat .act.raise{color:#20180A;background:var(--gold);border-color:transparent}
-.seat .act.call{color:#DCE9FF;border-color:var(--info)}
+.seat .act{display:block;font-size:11px;font-weight:800;padding:3px 6px;white-space:nowrap;line-height:1.25;border-top:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.06);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis}
+.seat .act.fold{color:var(--mute)}
+.seat .act.raise{color:#20180A;background:var(--gold)}
+.seat .act.call{color:#DCE9FF;background:rgba(75,132,216,.4)}
 .seat .act.check{color:var(--ink-2)}
-.seat .act.blind{color:#EBD9A0;border-color:rgba(201,162,39,.5)}
-.seat .act.allin{color:#fff;background:var(--bad);border-color:transparent}
-.seat .bet{position:absolute;left:50%;transform:translateX(-50%);bottom:-46px;font-size:11.5px;font-weight:800;color:#F3D77A;z-index:3;
-  background:rgba(8,14,12,.9);border:1px solid rgba(235,217,160,.35);border-radius:999px;padding:2px 8px 2px 6px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+.seat .act.blind{color:#EBD9A0}
+.seat .act.allin{color:#fff;background:var(--bad)}
+.betchip{position:absolute;transform:translate(-50%,-50%);z-index:3;font-size:11.5px;font-weight:800;color:#F3D77A;background:rgba(8,14,12,.88);border:1px solid rgba(235,217,160,.35);border-radius:999px;padding:2px 8px 2px 5px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.betchip::before{content:"";width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#F3D77A 0 30%,#C9A227 31% 60%,#8A6A12 61%);box-shadow:0 1px 2px rgba(0,0,0,.5)}
+@keyframes chippop{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}70%{transform:translate(-50%,-50%) scale(1.12)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.betchip.pop{animation:chippop .32s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes actpop{0%{opacity:0}100%{opacity:1}}
 .dbtn{position:absolute;top:-6px;right:6px;width:19px;height:19px;border-radius:50%;background:var(--card);
   color:#171A19;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,.4)}
 
 /* 내 자리 */
 /* 내 자리: 카드 | 이름·칩·족보 | 상태. 높이를 고정해 상황이 바뀌어도 화면이 움직이지 않는다 */
-.hero{display:grid;grid-template-columns:auto max-content;align-items:center;gap:14px;height:92px;box-sizing:border-box;padding:8px 6px;width:100%;max-width:560px;margin:0 auto;justify-content:center;grid-auto-columns:max-content}
+.hero{display:flex;align-items:center;justify-content:center;gap:16px;height:92px;box-sizing:border-box;padding:8px 6px;width:100%;max-width:560px;margin:0 auto}
 /* 상태 문구는 테이블 중앙 팟 아래 (두 줄 고정) */
 .center .msg{margin-top:8px;padding:0;min-height:0;height:2.7em;font-size:12.5px;line-height:1.35;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .center .msg .pill{font-size:13px;padding:3px 12px;white-space:nowrap;line-height:1.35}
 .hero .cards{display:flex;gap:7px}
-.hero .info{text-align:left;min-width:0}
+.hero .info{text-align:left;min-width:0;max-width:60%}
 .hero .nm{font-size:13px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hero .ch{font-size:20px;font-weight:800;color:var(--gold);line-height:1.1}
 .hero .made{font-size:12px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -392,13 +387,14 @@ header .tbtn{white-space:nowrap}
   /* 좌석: 이름표 옆에 카드를 붙여 폭을 줄이고 테이블 안쪽에 배치 */
   .seat{width:66px}
   .seat .cards{min-height:0;gap:2px;margin-bottom:3px}
-  .seat .plate{padding:3px 5px;border-radius:8px}
+  .seat .plate{border-radius:8px}
   .seat .nm .sty{font-size:10px;color:var(--gold);font-weight:600;margin-left:3px}
 .seat .nm{font-size:10px}.seat .ch{font-size:10.5px}
-  .seat .act{font-size:9.5px;padding:1px 6px;bottom:-17px}
-  .seat .bet{font-size:10px;bottom:-36px;padding:1px 6px 1px 5px}
+  .seat .act{font-size:9.5px;padding:2px 4px}
+  .seat .plate .nm{padding:3px 5px 0}.seat .plate .ch{padding:0 5px 3px}
+  .betchip{font-size:10px;padding:1px 6px 1px 4px}.betchip::before{width:8px;height:8px}
   .dbtn{width:15px;height:15px;font-size:8.5px;top:-4px;right:2px}
-  .hero{gap:10px;padding:6px 4px;height:74px;grid-template-columns:auto minmax(0,1fr)}
+  .hero{gap:12px;padding:6px 4px;height:74px}
   .hero .cards{gap:5px}
   .hero .nm{font-size:12px}
   .hero .ch{font-size:17px}
@@ -440,7 +436,7 @@ header .tbtn{white-space:nowrap}
 }
 .actions{flex-direction:column;gap:6px}
 .actrow{display:flex;gap:6px;width:100%;max-width:520px;justify-content:center}
-.actrow .abtn{flex:1 1 0;min-width:0;padding:0 8px;height:40px;border-radius:9px}
+.actrow .abtn{flex:1 1 0;min-width:0;padding:0 8px;height:42px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center}
 .actrow.main .abtn{font-size:14px}
 .actrow.single{justify-content:center}.actrow.single .abtn{flex:0 0 auto;min-width:180px;max-width:60%}
 .actrow.main .abtn small,.abtn.allin small{display:inline;font-size:11px;font-weight:700;opacity:.85;margin-left:5px}
@@ -1271,7 +1267,7 @@ function render() {
   { const potNow = potTotal(); const pe = $('pot'); if (potNow > FX.pot && FX.pot > 0 && pe) { pe.classList.remove('bump'); void pe.offsetWidth; pe.classList.add('bump'); } FX.pot = potNow; }
 
   // 좌석
-  document.querySelectorAll('.seat').forEach((s) => s.remove());
+  document.querySelectorAll('.seat, .betchip').forEach((s) => s.remove());
   const felt = $('felt');
   const opps = G.players.slice(1);            // 0번은 항상 나(온라인은 서버가 내 자리를 0번으로 돌려 보낸다)
   const n = opps.length;
@@ -1292,13 +1288,15 @@ function render() {
     }
     d.appendChild(cards);
     const plate = document.createElement('div'); plate.className = 'plate';
-    plate.innerHTML = '<div class="nm">' + esc(p.name) + '</div><div class="ch num">' + fmt(p.stack) + '</div>';
+    plate.innerHTML = '<div class="nm">' + esc(p.name) + '</div><div class="ch num">' + fmt(p.stack) + '</div>' + (p.last ? '<div class="act ' + actClass(p) + (FX.acts[idx] !== p.last ? ' pop' : '') + '">' + esc(p.last) + '</div>' : '');
     d.appendChild(plate);
     if (idx === G.btn && !p.out) { const b = document.createElement('div'); b.className = 'dbtn'; b.textContent = 'D'; d.appendChild(b); }
     if (p.away) { const aw = document.createElement('div'); aw.className = 'away'; aw.textContent = p.away === 'bot' ? 'AI 대리' : '자리 비움'; d.appendChild(aw); }
     if (p.sitOut) d.classList.add('folded');
-    if (p.last) { const a = document.createElement('div'); a.className = 'act ' + actClass(p) + (FX.acts[idx] !== p.last ? ' pop' : ''); a.textContent = p.last; d.appendChild(a); }
-    if (p.bet > 0) { const bt = document.createElement('div'); bt.className = 'bet num' + (FX.bets[idx] !== p.bet ? ' pop' : ''); bt.textContent = fmt(p.bet); d.appendChild(bt); }
+    if (p.bet > 0) {   // 베팅 칩은 좌석 앞(테이블 중앙 쪽)에 놓는다
+      const bt = document.createElement('div'); bt.className = 'betchip num' + (FX.bets[idx] !== p.bet ? ' pop' : ''); bt.textContent = fmt(p.bet);
+      bt.style.left = (x + (50 - x) * 0.4) + '%'; bt.style.top = (y + (50 - y) * 0.42) + '%'; felt.appendChild(bt);
+    }
     FX.acts[idx] = p.last; FX.bets[idx] = p.bet;
     const bub = bubbleFor(p.name); if (bub) d.appendChild(bub);
     felt.appendChild(d);
@@ -1336,7 +1334,7 @@ const SEAT_SLOTS = {   // 5명 이상: 각도표 (270 = 위, 180 = 왼쪽). 정�
   5: [205, 240, 270, 300, 335],
   6: [195, 228, 258, 282, 312, 345],
   7: [170, 200, 232, 270, 308, 340, 10],
-  8: [160, 192, 224, 254, 286, 316, 348, 20],
+  8: [155, 190, 224, 254, 286, 316, 350, 25],
 };
 function seatPos(k, n) {
   const mob = window.innerWidth <= 720;
@@ -1344,9 +1342,9 @@ function seatPos(k, n) {
   if (SEAT_SLOTS[n]) deg = SEAT_SLOTS[n][k];
   else { const START = mob ? 172 : 170, SPAN = mob ? 196 : 200; deg = START + ((k + 1) * SPAN) / (n + 1); }
   const wide = n >= 5;
-  const RX = wide ? (mob ? 40 : 46) : (mob ? 40 : 45);
-  const RY = wide ? (mob ? 42 : 45) : (mob ? 36 : 40);
-  const CY = wide ? (mob ? 49 : 51) : (mob ? 44 : 48);
+  const RX = wide ? (mob ? 39 : 44) : (mob ? 40 : 45);
+  const RY = wide ? (mob ? 39 : 42) : (mob ? 34 : 40);
+  const CY = wide ? (mob ? 47 : 50) : (mob ? 44 : 48);
   const t = deg * Math.PI / 180;
   return [50 + RX * Math.cos(t), CY + RY * Math.sin(t)];
 }
