@@ -2133,10 +2133,7 @@ function render() {
     if (idx === G.btn && !p.out) { const b = document.createElement('div'); b.className = 'dbtn'; b.textContent = 'D'; d.appendChild(b); }
     if (p.away) { const aw = document.createElement('div'); aw.className = 'away'; aw.textContent = p.away === 'bot' ? 'AI 대리' : '자리 비움'; d.appendChild(aw); }
     if (p.sitOut) d.classList.add('folded');
-    if (p.bet > 0) {   // 베팅 칩은 좌석 앞(테이블 중앙 쪽)에 놓는다
-      const bt = document.createElement('div'); bt.className = 'betchip num' + (FX.bets[idx] !== p.bet ? ' pop' : ''); bt.textContent = fmt(p.bet);
-      bt.style.left = (x + (50 - x) * 0.4) + '%'; bt.style.top = (y + (50 - y) * 0.42) + '%'; felt.appendChild(bt);
-    }
+    // 베팅 금액은 플레이트의 액션 띠(벳 200 · 콜 200 · SB 50)에 이미 있으므로 따로 칩 배지를 두지 않는다 (보드와 겹침)
     FX.acts[idx] = p.last; FX.bets[idx] = p.bet;
     const bub = bubbleFor(p.name); if (bub) d.appendChild(bub);
     felt.appendChild(d);
