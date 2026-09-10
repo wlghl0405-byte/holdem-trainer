@@ -24,8 +24,10 @@ const SPEEDS = {
 };
 const OFFLINE_GRACE_MS = 6000;  // 접속이 끊긴 사람 차례는 이만큼 기다렸다가 자동 처리
 const NEXT_HAND_SEC = 3;        // 쇼다운 후 다음 핸드까지
-const OFFLINE_LEAVE_MS = +process.env.OFFLINE_LEAVE_MS || 45000; // 끊긴 뒤 이 시간 안에 안 돌아오면 나간 것으로 처리
+const EMPTY_ROOM_MS = +process.env.EMPTY_ROOM_MS || 30 * 60 * 1000; // 사람이 모두 끊긴 방은 이 시간 뒤 정리 (그 전엔 언제든 돌아올 수 있다)
 const ROOM_IDLE_MS = 3 * 3600 * 1000; // 아무 일도 없는 방은 3시간 뒤 정리
+// 사람이 파산하면 시작 칩의 50%로, 그 뒤로는 파산할 때마다 10%로 계속 부활한다 (영영 파산은 없다). 봇은 파산하면 테이블을 떠난다
+const rebuyAmount = (cfg, count) => Math.max(cfg.bb, Math.round(cfg.stack * (count === 0 ? 0.5 : 0.1)));
 
 /* ───────── 정적 파일 ───────── */
 const STATIC = { '/': 'index.html', '/index.html': 'index.html', '/engine.js': 'engine.js', '/table.js': 'table.js', '/manifest.webmanifest': 'manifest.webmanifest', '/sw.js': 'sw.js', '/icon.svg': 'icon.svg' };
@@ -54,7 +56,7 @@ class Room {
     this.code = code;
     this.seats = [];              // {name, token, ws, bot, online, leave}
     this.waiting = [];            // 진행 중 들어온 사람 (다음 핸드부터 참여)
-    this.cfg = { stack: 10000, bb: 100, diff: 'normal', speed: 'slow', turn: 30 };
+    this.cfg = { stack: 10000, bb: 100, diff: 'normal', speed: 'slow', turn: 10, needHuman: true };   // needHuman: 사람이 아무도 없으면(모두 자리 비움) 봇끼리 돌리지 않고 멈춘다
     this.table = new TB.Table(this.cfg, (type, data) => this.onEvent(type, data));
     this.playing = false;
     this.timer = null; this.clock = null;
@@ -63,7 +65,10 @@ class Room {
   }
   touch() { this.lastActive = Date.now(); }
   humans() { return this.seats.filter((s) => !s.bot); }
-  hostSeat() { return this.seats.find((s) => !s.bot && !s.leave) || null; }
+  /** 방장 = 접속 중인 첫 사람. 잠깐 끊긴 동안은 다음 사람이 맡고, 돌아오면 자리 순서대로 다시 원래 방장에게 온다 */
+  hostSeat() { return this.seats.find((s) => !s.bot && !s.leave && s.online) || this.seats.find((s) => !s.bot && !s.leave) || null; }
+  /** 다음 핸드를 돌릴 수 있나: 칠 사람 2명 이상 + 그중 사람이 최소 1명 */
+  canDeal() { const d = this.table.dealable(); return d.length >= 2 && d.some((p) => p.human); }
   isHost(seat) { return this.hostSeat() === seat; }
 
   /* ── 로비 ── */
@@ -87,7 +92,7 @@ class Room {
     if (!this.playing) return;
     const st = this.table.stage;
     if (st === 'idle' || st === 'over') { this.betweenHands(); this.dirty = true; }
-    else if (st === 'paused') { this.betweenHands(); this.dirty = true; if (this.table.dealable().length >= 2) { this.table.startHand(); this.drive(); } }
+    else if (st === 'paused') { this.betweenHands(); this.dirty = true; if (this.canDeal()) { this.table.startHand(); this.drive(); } }
   }
   addBot() {
     const [name] = TB.pickNames(1, this.seats.map((s) => s.name));
@@ -115,7 +120,7 @@ class Room {
       stack: Math.max(100, Math.min(10000000, Math.round(+cfg.stack) || 10000)),
       bb: 100, diff: ['easy', 'normal', 'hard', 'pro', 'mix'].includes(cfg.diff) ? cfg.diff : 'normal',
       speed: SPEEDS[cfg.speed] ? cfg.speed : 'slow',
-      turn: [0, 5, 10, 15, 30, 60, 90, 120].includes(+cfg.turn) ? +cfg.turn : 30,
+      turn: [0, 3, 5, 10].includes(+cfg.turn) ? +cfg.turn : 10,
     });
     this.cfg.bb = Math.max(2, Math.min(Math.floor(this.cfg.stack / 2), Math.round(+cfg.bb) || 100));
   }
@@ -124,7 +129,7 @@ class Room {
     if (this.playing) {
       const st = this.table.stage;
       if (st !== 'idle' && st !== 'over') return false;
-      this.applyCfg(cfg || {}); this.table.players.forEach((p) => { p.stack = this.cfg.stack; p.out = false; }); this.broadcastLobby(); this.dirty = true; this.broadcastState();
+      this.applyCfg(cfg || {}); this.table.players.forEach((p) => { p.stack = this.cfg.stack; p.out = false; p.rebuys = 0; }); this.broadcastLobby(); this.dirty = true; this.broadcastState();
       return true;
     }
     const live = this.seats.filter((s) => !s.leave);
@@ -145,6 +150,17 @@ class Room {
     for (let i = this.seats.length - 1; i >= 0; i--) {
       const s = this.seats[i];
       if (s.leave) { const pi = T.players.indexOf(s.player); if (pi >= 0) T.players.splice(pi, 1); this.seats.splice(i, 1); }
+    }
+    // 파산 처리: 봇은 테이블을 떠나고, 사람은 시작 칩의 50%(처음)·10%(그 뒤)로 계속 부활
+    for (let i = this.seats.length - 1; i >= 0; i--) {
+      const s = this.seats[i]; const p = s.player;
+      if (!p || p.stack > 0) continue;
+      if (s.bot) { const pi = T.players.indexOf(p); if (pi >= 0) T.players.splice(pi, 1); this.seats.splice(i, 1); this.broadcast({ t: 'event', name: 'bust', data: { name: s.name, bot: true } }); continue; }
+      p.rebuys = p.rebuys || 0;
+      const pct = p.rebuys === 0 ? 50 : 10;
+      const amt = rebuyAmount(this.cfg, p.rebuys);
+      p.rebuys++; p.stack = amt; p.out = false;
+      this.broadcast({ t: 'event', name: 'rebuy', data: { name: s.name, amount: amt, pct, count: p.rebuys } });
     }
     // 대기자 착석
     this.waiting.forEach((s) => { const p = T.addPlayer({ name: s.name, human: !s.bot, bot: s.bot, stack: this.cfg.stack, style: s.bot ? TB.Table.styleFor(this.cfg.diff) : undefined }); p.online = s.online; s.player = p; });
@@ -217,7 +233,10 @@ class Room {
     const res = this.table.result;
     const rows = res && res.rows ? res.rows.length : 0;
     const k = { slow: 1, normal: 0.7, fast: 0.45 }[this.cfg.speed] || 1;
-    const revealMs = rows >= 2 ? (900 * Math.max(0, 5 - (this.preBoard == null ? 5 : this.preBoard)) + 700 * rows + 1300) * k : 0;
+    const missing = Math.max(0, 5 - (this.preBoard == null ? 5 : this.preBoard));
+    const drama = missing > 0 && this.table.players.some((p) => p.allIn && !p.folded && !p.out);   // 올인 쇼다운은 화면에서 더 천천히 보여준다
+    const k2 = k * (drama ? 1.7 : 1);
+    const revealMs = rows >= 2 ? (drama ? 1400 : 0) + (900 * missing + (drama ? 1000 : 0) + 700 * rows + 1400) * k2 : 0;
     let left = NEXT_HAND_SEC;
     this.timer = setTimeout(() => {
     this.broadcast({ t: 'countdown', sec: left });
@@ -228,7 +247,7 @@ class Room {
         clearInterval(this.clock); this.clock = null;
         this.betweenHands();
         this.broadcastLobby();
-        this.table.startHand();
+        this.table.startHand();   // 사람이 아무도 없으면(cfg.needHuman) 봇끼리 돌리지 않고 paused로 멈춘다
         this.drive();
       }
     }, 1000);
@@ -282,11 +301,12 @@ class Room {
       // 자리 비움: 'fold'(자동 체크/폴드) · 'bot'(AI 대리) · 그 외(복귀)
       const mode = m.mode === 'fold' || m.mode === 'bot' ? m.mode : '';
       seat.away = mode;
+      seat.awayAuto = mode ? !!m.auto : false;   // 화면을 떠나 자동으로 걸린 자리 비움은 돌아오면(재접속 포함) 자동 해제
       if (seat.player) { seat.player.away = mode; seat.player.sitOut = mode === 'fold'; if (mode === 'bot') seat.player.style = TB.Table.styleFor(this.cfg.diff); }
       this.broadcastLobby();
       if (this.playing) {
         this.dirty = true;
-        if (T.stage === 'paused' && T.dealable().length >= 2) { T.startHand(); this.drive(); }               // 돌아와서 다시 2명 이상이면 재개
+        if (T.stage === 'paused' && this.canDeal()) { T.startHand(); this.drive(); }               // 돌아와서 다시 칠 수 있으면 재개
         else if (T.toAct >= 0 && T.players[T.toAct] === seat.player) this.drive();   // 지금 내 차례면 즉시 처리 방식 전환
         else this.broadcastState();
       }
@@ -304,30 +324,36 @@ class Room {
       this.cleanupIfEmpty();
     }
   }
+  /**
+   * 접속이 끊기면 자리를 지우지 않고 '자리 비움'으로 둔다 (화면 잠금·앱 전환·새로고침 모두 여기로 온다).
+   * 돌아오면 같은 자리로 복귀하고 자리 비움도 자동 해제된다. 방은 사람이 모두 끊긴 채 EMPTY_ROOM_MS가 지나야 사라진다.
+   */
   disconnect(seat) {
     seat.online = false; seat.ws = null;
-    if (seat.player) { seat.player.online = false; seat.player.sitOut = true; }   // 끊긴 동안은 카드를 받지 않는다
-    if (!this.playing) { this.removeSeat(seat); }
+    if (!seat.away) { seat.away = 'fold'; seat.awayAuto = true; }
+    if (seat.player) { seat.player.online = false; seat.player.sitOut = true; seat.player.away = seat.away; }   // 끊긴 동안은 카드를 받지 않는다
     this.broadcastLobby();
     if (this.playing) {
-      this.dirty = true; this.broadcastState();
+      this.dirty = true;
       const T = this.table;
-      if (T.toAct >= 0 && T.players[T.toAct] === seat.player) { clearInterval(this.clock); this.armTurnClock(); }
-      // 유예 시간 안에 안 돌아오면 자리를 비운다 (창을 닫은 것으로 간주)
-      clearTimeout(seat.leaveT);
-      seat.leaveT = setTimeout(() => {
-        if (seat.online || !this.seats.includes(seat)) return;
-        this.removeSeat(seat); this.broadcastLobby();
-        if (this.playing) { this.dirty = true; if (T.stage === 'paused' && T.dealable().length >= 2) { T.startHand(); this.drive(); } else this.broadcastState(); }
-        this.cleanupIfEmpty();
-      }, OFFLINE_LEAVE_MS);
+      if (T.toAct >= 0 && T.players[T.toAct] === seat.player) this.drive();   // 지금 차례면 자리 비움 규칙(자동 체크/폴드)으로 넘어간다
+      else this.broadcastState();
     }
     this.cleanupIfEmpty();
   }
+  /** 돌아온 사람: 자동으로 걸린 자리 비움은 풀고, 멈춰 있던 게임이면 재개 */
+  reconnect(seat, ws, name) {
+    if (seat.ws && seat.ws !== ws) { try { seat.ws.close(); } catch (e) {} }
+    seat.ws = ws; seat.online = true; seat.leave = false; if (name) seat.name = name;
+    if (seat.awayAuto) { seat.away = ''; seat.awayAuto = false; }
+    if (seat.player) { seat.player.online = true; seat.player.name = seat.name; seat.player.away = seat.away; seat.player.sitOut = seat.away === 'fold'; }
+    if (this.playing && this.table.stage === 'paused' && this.canDeal()) { this.table.startHand(); this.drive(); }
+  }
   cleanupIfEmpty() {
     if (this.humans().every((s) => !s.online)) {
-      // 사람이 아무도 없으면 잠시 뒤 방 삭제 (새로고침 복귀 여지 60초)
-      setTimeout(() => { if (rooms.get(this.code) === this && this.humans().every((s) => !s.online)) { clearTimeout(this.timer); clearInterval(this.clock); rooms.delete(this.code); } }, 60000);
+      // 사람이 아무도 없으면 한참 뒤 방 삭제 (그 전에 누구든 돌아오면 그대로 이어진다)
+      clearTimeout(this.emptyT);
+      this.emptyT = setTimeout(() => { if (rooms.get(this.code) === this && this.humans().every((s) => !s.online)) { clearTimeout(this.timer); clearInterval(this.clock); rooms.delete(this.code); } }, EMPTY_ROOM_MS);
     }
   }
 }
@@ -339,6 +365,7 @@ wss.on('connection', (ws) => {
   ws.on('pong', () => { ws.isAlive = true; });
   ws.on('message', (raw) => {
     let m; try { m = JSON.parse(raw); } catch (e) { return; }
+    if (m.t === 'ping') return send(ws, { t: 'pong' });   // 폰이 백그라운드에서 돌아올 때 연결 생존 확인용
     const name = String(m.name || '').trim().slice(0, 12);
     if (m.t === 'create') {
       if (!name) return send(ws, { t: 'error', msg: '이름을 입력하세요.' });
@@ -350,11 +377,9 @@ wss.on('connection', (ws) => {
       const room = rooms.get(String(m.code || '').toUpperCase());
       if (!room) return send(ws, { t: 'error', msg: '방을 찾을 수 없습니다. 코드를 확인하세요.' });
       let seat = m.token ? room.seats.find((s) => !s.bot && s.token === m.token) : null;
+      if (!seat && name) seat = room.seats.find((s) => !s.bot && !s.online && s.name === name) || null;   // 토큰을 잃었어도 같은 이름의 빈(오프라인) 자리는 되찾는다
       if (seat) {  // 복귀
-        if (seat.ws && seat.ws !== ws) { try { seat.ws.close(); } catch (e) {} }
-        seat.ws = ws; seat.online = true; seat.leave = false; if (name) seat.name = name; clearTimeout(seat.leaveT);
-        if (seat.player) { seat.player.online = true; seat.player.name = seat.name; seat.player.sitOut = seat.away === 'fold'; }
-        if (room.playing && room.table.stage === 'paused' && room.table.dealable().length >= 2) { room.table.startHand(); room.drive(); }
+        room.reconnect(seat, ws, name);
       } else {
         if (!name) return send(ws, { t: 'error', msg: '이름을 입력하세요.' });
         if (room.seats.length >= 8) return send(ws, { t: 'error', msg: '방이 가득 찼습니다(최대 8명).' });
@@ -382,6 +407,16 @@ setInterval(() => {
   const now = Date.now();
   rooms.forEach((room, code) => { if (now - room.lastActive > ROOM_IDLE_MS) { clearTimeout(room.timer); clearInterval(room.clock); rooms.delete(code); } });
 }, 30000);
+// Render 무료 서버는 HTTP 요청이 15분 없으면 잠든다(웹소켓만으로는 깨어 있지 않다).
+// 사람이 있는 방이 하나라도 있으면 자기 주소를 주기적으로 불러 게임 도중 잠들지 않게 한다.
+const SELF_URL = process.env.RENDER_EXTERNAL_URL || process.env.SELF_URL || '';
+if (SELF_URL && typeof fetch === 'function') {
+  setInterval(() => {
+    let busy = false;
+    rooms.forEach((room) => { if (room.humans().some((s) => s.online)) busy = true; });
+    if (busy) fetch(SELF_URL.replace(/\/+$/, '') + '/health').catch(() => {});
+  }, 5 * 60 * 1000);
+}
 
 server.listen(PORT, () => { console.log('홀덤 서버: http://localhost:' + PORT); });
 module.exports = { server, rooms };

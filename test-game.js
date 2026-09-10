@@ -11,7 +11,8 @@ const TB = require('./table.js');
 /* ── 최소 DOM 스텁 ── */
 function mkEl() {
   const el = {
-    _cls: '', style: {}, children: [], textContent: '', value: 0, disabled: false,
+    _cls: '', style: { setProperty() {} }, children: [], textContent: '', value: 0, disabled: false, dataset: {}, offsetWidth: 0,
+    getBoundingClientRect() { return { left: 0, top: 0, width: 0, height: 0 }; }, querySelector: () => null,
     get className() { return this._cls; }, set className(v) { this._cls = v; },
     set innerHTML(v) { this._html = v; this.children = []; }, get innerHTML() { return this._html || ''; },
     appendChild(c) { this.children.push(c); return c; },

@@ -4,7 +4,7 @@
  * 검증: 남의 패·덱 비노출, 칩 총량 보존, 토큰 재접속 복귀, 채팅 전달, 차례 제한 자동 처리, 게임 흐름 교착 없음.
  */
 process.env.PORT = '0';
-process.env.OFFLINE_LEAVE_MS = '1500';   // 테스트에서는 끊김 유예를 짧게
+process.env.EMPTY_ROOM_MS = '1500';      // 테스트에서는 빈 방 정리를 짧게
 const { server, rooms } = require('./server.js');
 const WebSocket = require('ws');
 
@@ -13,7 +13,7 @@ const ok = (c, msg) => { if (c) pass++; else { fail++; console.log('  ✗ ' + ms
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function client(name) {
-  const c = { name, ws: null, code: '', seat: -1, token: '', host: false, views: [], lobby: null, chats: [], errors: [], clocks: 0, lastView: null, autoplay: true, acted: 0 };
+  const c = { name, ws: null, code: '', seat: -1, token: '', host: false, views: [], lobby: null, chats: [], errors: [], clocks: 0, lastView: null, autoplay: true, acted: 0, extra: 0, events: [] };
   c.connect = (port) => new Promise((resolve) => {
     c.ws = new WebSocket('ws://127.0.0.1:' + port);
     c.ws.on('open', resolve);
@@ -21,11 +21,13 @@ function client(name) {
       const m = JSON.parse(raw);
       if (m.t === 'joined') { c.code = m.code; c.seat = m.seat; c.token = m.token; c.host = m.host; }
       else if (m.t === 'lobby') c.lobby = m;
-      else if (m.t === 'state') { c.lastView = m.view; c.views.push(m.view); if (c.autoplay) c.maybeAct(m.view); }
+      else if (m.t === 'state') { m.view._extra = c.extra; c.lastView = m.view; c.views.push(m.view); if (c.autoplay) c.maybeAct(m.view); }
+      else if (m.t === 'event') { c.events.push(m); if (m.name === 'rebuy') c.extra += m.data.amount; }
       else if (m.t === 'chat') c.chats.push(m);
       else if (m.t === 'error') c.errors.push(m.msg);
       else if (m.t === 'turnclock') c.clocks++;
       else if (m.t === 'gameover') c.gameover = m;
+      else if (m.t === 'pong') c.pong = (c.pong || 0) + 1;
     });
   });
   c.send = (m) => c.ws.send(JSON.stringify(m));
@@ -110,11 +112,11 @@ function checkView(v, base, label) {
     if (leak) holeLeak++;
     // 쇼다운 뒤에는 팟이 이미 승자 스택에 들어가 있고 committed는 다음 핸드까지 남아 있으므로 스택만 합산
     const total = v.players.reduce((a, p) => a + p.stack + (v.stage === 'showdown' ? 0 : p.committed), 0);
-    if (v.stage !== 'idle' && total !== BASE) { chipBad++; if (chipBad === 1) console.log('  · 불일치 예: stage=' + v.stage + ' total=' + total); }
+    if (v.stage !== 'idle' && total !== BASE + v._extra) { chipBad++; if (chipBad === 1) console.log('  · 불일치 예: stage=' + v.stage + ' total=' + total); }
   }
   ok(deckLeak === 0, '덱 비노출 (' + (A.views.length + B.views.length) + '개 화면)');
   ok(holeLeak === 0, '남의 패 비노출');
-  ok(chipBad === 0, '칩 총량 보존 ' + BASE);
+  ok(chipBad === 0, '칩 총량 보존 ' + BASE + ' (부활 반영)');
   ok(A.lastView.seat === 0 && B.lastView.seat === 1 && A.lastView.players[0].name === '철수' && B.lastView.players[0].name === '영희', '각자 자기 좌석이 0번');
 
   // 재접속: B가 끊고 토큰으로 복귀
@@ -146,18 +148,23 @@ function checkView(v, base, label) {
   while (Date.now() - t3 < 30000 && !(A.lastView && A.lastView.stage === 'paused')) await sleep(100);
   ok(A.lastView && A.lastView.stage === 'paused', '칠 사람이 1명뿐이면 멈춤 (stage=' + (A.lastView && A.lastView.stage) + ')');
   const h3 = A.lastView.handNo;
-  A.autoplay = true; A.send({ t: 'away', mode: '' }); await sleep(500);
-  ok(A.lastView.stage !== 'paused' && A.lastView.handNo === h3 + 1, '돌아오면 다음 핸드로 재개 (' + A.lastView.stage + ')');
+  A.autoplay = true; A.send({ t: 'away', mode: '' });
+  { const t4 = Date.now(); while (Date.now() - t4 < 8000 && (A.lastView.stage === 'paused' || A.lastView.handNo < h3 + 1)) await sleep(100); }
+  ok(A.lastView.stage !== 'paused' && A.lastView.handNo >= h3 + 1, '돌아오면 다음 핸드로 재개 (' + A.lastView.stage + ')');
   ok(A.lastView.players.find((p) => p.name === '영희').hole.length === 0, '자리 비움인 사람은 카드를 받지 않음');
   B2.send({ t: 'away', mode: '' }); await sleep(200);
 
-  // 창을 닫으면(끊긴 채 유예 경과) 자동으로 나감. 유예 안에 돌아오면 자리 유지
+  // 끊기면 나가지 않고 '자리 비움'이 된다. 돌아오면 같은 자리로 복귀하고 자리 비움도 자동 해제
   const E = client('잠깐끊김'); await E.connect(port); E.send({ t: 'join', code: A.code, name: E.name }); await sleep(200);
   E.ws.close(); await sleep(500);
+  { const pe = A.lobby.players.find((p) => p.name === '잠깐끊김'); ok(pe && !pe.online && pe.away === 'fold', '끊긴 사람은 자리 비움(오프라인) 표시'); }
+  await sleep(2000);
+  ok(A.lobby.players.some((p) => p.name === '잠깐끊김'), '시간이 지나도 자리는 남아 있음 (언제든 복귀 가능)');
   const E2 = client('잠깐끊김'); await E2.connect(port); E2.send({ t: 'join', code: A.code, name: E2.name, token: E.token }); await sleep(200);
-  ok(E2.seat === E.seat && A.lobby.players.some((p) => p.name === '잠깐끊김' && p.online), '유예 안에 돌아오면 자리 유지');
-  E2.ws.close(); await sleep(2500);
-  ok(!A.lobby.players.some((p) => p.name === '잠깐끊김'), '유예가 지나면 자동으로 나감');
+  { const pe = A.lobby.players.find((p) => p.name === '잠깐끊김'); ok(E2.seat === E.seat && pe && pe.online && pe.away === '', '돌아오면 같은 자리 + 자리 비움 자동 해제'); }
+  E2.send({ t: 'leave' });
+  { const t5 = Date.now(); while (Date.now() - t5 < 20000 && A.lobby.players.some((p) => p.name === '잠깐끊김')) await sleep(100); }
+  ok(!A.lobby.players.some((p) => p.name === '잠깐끊김'), '방 나가기는 (핸드가 끝나면) 제거');
 
   // 방장 나가면 방장 이양
   B2.autoplay = true;
@@ -165,6 +172,47 @@ function checkView(v, base, label) {
   ok(B2.lobby && B2.lobby.host === true, '방장 이양');
 
   A.ws.close(); B2.ws.close();
+
+  // 로비(테이블 전)에서 방장이 잠깐 끊겨도 유예 안에 돌아오면 방장 유지. 토큰을 잃어도 같은 이름의 오프라인 자리는 되찾는다
+  const H = client('방장'), Gt = client('손님');
+  await H.connect(port); H.send({ t: 'create', name: H.name }); await sleep(150);
+  await Gt.connect(port); Gt.send({ t: 'join', code: H.code, name: Gt.name }); await sleep(150);
+  const hcode = H.code, htok = H.token;
+  H.ws.close(); await sleep(300);
+  ok(Gt.lobby.players[0].name === '방장' && Gt.lobby.players[0].online === false && Gt.lobby.host, '방장이 끊기면 접속 중인 다음 사람이 방장을 맡음');
+  const H2 = client('방장'); await H2.connect(port); H2.send({ t: 'join', code: hcode, name: '방장', token: htok }); await sleep(200);
+  ok(H2.host && H2.seat === 0 && !Gt.lobby.host, '원래 방장이 돌아오면 방장 복귀');
+  H2.ws.close(); await sleep(300);
+  const H3 = client('방장'); await H3.connect(port); H3.send({ t: 'join', code: hcode, name: '방장' }); await sleep(200);
+  ok(H3.host && H3.seat === 0 && !H3.errors.length, '토큰 없이 같은 이름으로 오프라인 자리 되찾기');
+  const H4 = client('방장'); await H4.connect(port); H4.send({ t: 'join', code: hcode, name: '방장' }); await sleep(200);
+  ok(H4.errors.some((e) => e.includes('같은 이름')), '접속 중인 자리는 같은 이름으로 못 뺏음');
+  H3.send({ t: 'ping' }); await sleep(100);
+  ok(H3.pong > 0, '핑에 퐁 응답');
+  H3.ws.close(); await sleep(2500);
+  ok(Gt.lobby.host && Gt.lobby.players.length === 2, '방장이 오래 끊겨도 자리는 남고 방장만 이양');
+  Gt.ws.close(); H4.ws.close();
+
+  // 파산: 봇은 테이블을 떠나고, 사람은 시작 칩의 50%(처음)·10%(그 뒤, 최소 1BB)로 계속 부활한다
+  // (판 결과에 기대지 않고 쇼다운 직후 서버 스택을 0으로 만들어 규칙만 확인한다)
+  const P = client('파산맨'); await P.connect(port); P.send({ t: 'create', name: P.name }); await sleep(150);
+  P.send({ t: 'addBot' }); P.send({ t: 'addBot' }); await sleep(100);
+  P.send({ t: 'start', cfg: { stack: 2000, bb: 500, diff: 'easy', speed: 'fast', turn: 0 } }); await sleep(200);
+  P.send({ t: 'deal' });
+  const proom = rooms.get(P.code);
+  const atShowdown = async () => { const t = Date.now(); while (Date.now() - t < 40000 && proom.table.stage !== 'showdown') await sleep(50); return proom.table.stage === 'showdown'; };
+  const waitEvent = async (name, n) => { const t = Date.now(); while (Date.now() - t < 40000 && P.events.filter((e) => e.name === name).length < n) await sleep(50); };
+  ok(await atShowdown(), '첫 핸드 쇼다운 도달');
+  proom.table.players[0].stack = 0; await waitEvent('rebuy', 1);
+  ok(await atShowdown(), '두 번째 핸드 쇼다운 도달');
+  proom.table.players[0].stack = 0; await waitEvent('rebuy', 2);
+  const rebuys = P.events.filter((e) => e.name === 'rebuy').map((e) => e.data.amount);
+  ok(rebuys.length === 2 && rebuys[0] === 1000 && rebuys[1] === 500, '부활 금액 처음 50%, 그 뒤 10%(최소 1BB) ' + JSON.stringify(rebuys));
+  ok(P.lastView && P.lastView.players[0].stack > 0 && !P.lastView.players[0].out && P.lastView.players[0].rebuys === 2, '부활 뒤 다시 참여 중 (부활 횟수 화면 전달)');
+  ok(await atShowdown(), '세 번째 핸드 쇼다운 도달');
+  const botName = proom.table.players[1].name; proom.table.players[1].stack = 0; await waitEvent('bust', 1);
+  ok(P.events.some((e) => e.name === 'bust' && e.data.name === botName) && !P.lobby.players.some((p) => p.name === botName), '파산한 봇은 테이블을 떠남 (' + botName + ')');
+  P.ws.close();
   console.log(`\n통과 ${pass} / 실패 ${fail}`);
   server.close(); process.exit(fail ? 1 : 0);
 })().catch((e) => { console.log('오류', e); process.exit(1); });

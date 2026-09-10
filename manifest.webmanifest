@@ -1,6 +1,6 @@
 {
-  "name": "홀덤",
-  "short_name": "홀덤",
+  "name": "육지덤",
+  "short_name": "육지덤",
   "description": "친구와 온라인으로 즐기는 텍사스 홀덤",
   "start_url": "./",
   "scope": "./",

@@ -129,7 +129,7 @@
       this.players.forEach((p) => { if (p.stack <= 0) p.out = true; });
       if (this.alive().length < 2) { this.stage = 'over'; this.toAct = -1; this.auto = null; this.emit('gameover'); this.emit('state'); return false; }
       const alive = this.dealable();
-      if (alive.length < 2) { this.stage = 'paused'; this.toAct = -1; this.auto = null; this.board = []; this.players.forEach((p) => this.resetPlayer(p)); this.emit('state'); return false; }   // 자리 비움으로 대기
+      if (alive.length < 2 || (this.cfg.needHuman && !alive.some((p) => p.human))) { this.stage = 'paused'; this.toAct = -1; this.auto = null; this.board = []; this.players.forEach((p) => this.resetPlayer(p)); this.emit('state'); return false; }   // 자리 비움으로 대기
 
       this.handNo++; this.result = null;
       this.board = []; this.stage = 'preflop'; this.showAll = false; this.maxBet = 0; this.minRaise = this.cfg.bb;
@@ -255,8 +255,8 @@
      */
     static get STYLES() {
       return {
-        easy:   { label: '초급',  aggr: 0.15, bluff: 0.03, stub: 0.62, cbet: 0.20, trap: 0.00, noise: 0.25, size: 0.5, iters: 120,  range: { early: 'SABCD', late: 'SABCD', blind: 'SABCD' }, raise: 'S', threebet: '' },
-        normal: { label: '중급',  aggr: 0.45, bluff: 0.10, stub: 0.95, cbet: 0.50, trap: 0.10, noise: 0.10, size: 0.6, iters: 420,  range: { early: 'SABC', late: 'SABC', blind: 'SABCD' }, raise: 'SA', threebet: 'S' },
+        easy:   { label: '하수',  aggr: 0.15, bluff: 0.03, stub: 0.62, cbet: 0.20, trap: 0.00, noise: 0.25, size: 0.5, iters: 120,  range: { early: 'SABCD', late: 'SABCD', blind: 'SABCD' }, raise: 'S', threebet: '' },
+        normal: { label: '중수',  aggr: 0.45, bluff: 0.10, stub: 0.95, cbet: 0.50, trap: 0.10, noise: 0.10, size: 0.6, iters: 420,  range: { early: 'SABC', late: 'SABC', blind: 'SABCD' }, raise: 'SA', threebet: 'S' },
         hard:   { label: '고수',  aggr: 0.65, bluff: 0.16, stub: 1.05, cbet: 0.65, trap: 0.20, noise: 0.06, size: 0.7, iters: 900,  range: { early: 'SAB', late: 'SABC', blind: 'SABC' }, raise: 'SAB', threebet: 'SA' },
         pro:    { label: '프로',  aggr: 0.80, bluff: 0.20, stub: 1.10, cbet: 0.75, trap: 0.30, noise: 0.03, size: 0.75, iters: 1200, range: { early: 'SAB', late: 'SABC', blind: 'SABC' }, raise: 'SAB', threebet: 'SA' },
         maniac: { label: '공격형', aggr: 0.90, bluff: 0.35, stub: 0.75, cbet: 0.90, trap: 0.05, noise: 0.10, size: 1.0, iters: 700,  range: { early: 'SABC', late: 'SABCD', blind: 'SABCD' }, raise: 'SABC', threebet: 'SAB' },
@@ -436,7 +436,7 @@
         players.push({
           id: p.id, name: p.name, human: p.human, bot: !!p.bot, online: p.online !== false, style: p.style || '', styleLabel: p.style && Table.STYLES[p.style] ? Table.STYLES[p.style].label : '', away: p.away || '',
           stack: p.stack, bet: p.bet, committed: p.committed, folded: p.folded, allIn: p.allIn, out: p.out,
-          acted: p.acted, last: p.last, lastType: p.lastType, handStart: p.handStart, sitOut: !!p.sitOut,
+          acted: p.acted, last: p.last, lastType: p.lastType, handStart: p.handStart, sitOut: !!p.sitOut, rebuys: p.rebuys || 0,
           hole: reveal ? p.hole.slice() : p.hole.map(() => null),
         });
       }

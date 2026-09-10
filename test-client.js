@@ -6,7 +6,7 @@
 const fs = require('fs'), vm = require('vm');
 const P = __dirname + '/';
 const HE = require(P + 'engine.js'), TB = require(P + 'table.js');
-function mkEl() { const el = { _cls: '', style: {}, children: [], textContent: '', value: '', disabled: false, hidden: false, dataset: {},
+function mkEl() { const el = { _cls: '', style: { setProperty() {} }, children: [], textContent: '', value: '', disabled: false, hidden: false, dataset: {}, offsetWidth: 0, getBoundingClientRect() { return { left: 0, top: 0, width: 0, height: 0 }; },
   get className() { return this._cls; }, set className(v) { this._cls = v; },
   set innerHTML(v) { this._html = v; this.children = []; }, get innerHTML() { return this._html || ''; },
   appendChild(c) { this.children.push(c); return c; }, remove() {}, querySelector: () => mkEl(), querySelectorAll: () => [],
