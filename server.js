@@ -34,7 +34,7 @@ const levelBB = (lv) => (lv <= TOUR_LEVELS.length ? TOUR_LEVELS[lv - 1] : TOUR_L
 const TOUR_LEVEL_MS = +process.env.TOUR_LEVEL_MS || 0;   // 테스트용: 레벨 시간을 밀리초로 강제
 
 /* ───────── 정적 파일 ───────── */
-const STATIC = { '/': 'index.html', '/index.html': 'index.html', '/engine.js': 'engine.js', '/table.js': 'table.js', '/manifest.webmanifest': 'manifest.webmanifest', '/sw.js': 'sw.js', '/icon.svg': 'icon.svg' };
+const STATIC = { '/': 'index.html', '/index.html': 'index.html', '/phone': 'phone.html', '/phone.html': 'phone.html', '/engine.js': 'engine.js', '/table.js': 'table.js', '/manifest.webmanifest': 'manifest.webmanifest', '/sw.js': 'sw.js', '/icon.svg': 'icon.svg' };
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');

@@ -524,6 +524,8 @@ header .tbtn{white-space:nowrap}
 .hint.bad{color:#E07B70}
 .seat.off .plate{opacity:.55}
 .numin[type=text]{text-align:left}
+.pconly{display:block;margin:-6px 0 12px}.pconly a{color:var(--gold);font-weight:700}
+@media (max-width:1080px){.pconly{display:none}}
 
 /* v1.3.1: 상태 문구는 하단 독 맨 위(스테이지·차례·필요 금액), 아바타, 결과 카드 */
 .dock .msg{display:flex;align-items:center;justify-content:center;gap:8px;height:34px;min-height:0;max-height:none;padding:0 4px 4px;margin:0 0 4px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13.5px;color:var(--ink-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -752,6 +754,7 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
   <div class="modal">
     <h2>게임 설정</h2>
     <div class="mtab"><button class="on" data-mode="local" id="tabLocal">혼자 연습</button><button data-mode="net" id="tabNet">친구와 온라인</button></div>
+    <p class="hint pconly" id="phonePreview">PC에서 폰 화면 그대로 보려면 <a href="phone.html">폰 화면 미리보기</a> (같은 방·자리로 이어집니다)</p>
     <p class="sub localonly">설정을 바꾸면 새 게임으로 시작합니다.</p>
     <p class="sub netonly">방을 만들고 코드나 링크를 친구에게 보내세요. 서로 다른 곳에서도 됩니다.</p>
     <div class="netonly" id="netPanel">
