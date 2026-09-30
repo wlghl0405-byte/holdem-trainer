@@ -525,6 +525,19 @@ header .tbtn{white-space:nowrap}
 .seat.off .plate{opacity:.55}
 .numin[type=text]{text-align:left}
 
+/* v1.3.1: 상태 문구는 하단 독 맨 위(스테이지·차례·필요 금액), 아바타, 결과 카드 */
+.dock .msg{display:flex;align-items:center;justify-content:center;gap:8px;height:34px;min-height:0;max-height:none;padding:0 4px 4px;margin:0 0 4px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13.5px;color:var(--ink-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dock .msg b{color:var(--gold-2)}
+.dock .msg br{display:none}
+.dock .msg .pill{padding:3px 12px;font-size:13px}
+.av{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;margin-right:5px;vertical-align:-3px;font-size:10.5px;font-weight:800;color:#fff;background:hsl(var(--h) 45% 42%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 1px 3px rgba(0,0,0,.5)}
+.hero .nm .av{width:22px;height:22px;font-size:12px;vertical-align:-5px;margin-right:6px}
+.rcard{background:linear-gradient(180deg,rgba(14,20,18,.96),rgba(6,10,9,.96));border:1px solid rgba(212,175,55,.35);padding:18px 30px 20px;box-shadow:0 24px 64px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.04)}
+.rlabel{font-size:42px;letter-spacing:.12em}
+.rwho{font-size:14px;margin-top:10px}
+.rshow{border-top-color:rgba(212,175,55,.25)}
+@media (max-width:1080px){.dock .msg{height:28px;font-size:12px;padding:0 2px 3px;margin-bottom:3px}.dock .msg .pill{font-size:11.5px;padding:2px 9px}.av{width:15px;height:15px;font-size:9px;margin-right:3px;vertical-align:-2px}.hero .nm .av{width:18px;height:18px;font-size:10px}.rlabel{font-size:32px}}
+
 /* ═══════════ v1.3 비주얼 개편: 깊은 펠트·금색 레일·칩 토큰·차례 카드·하단 독 ═══════════ */
 :root{--felt:#123B2C;--felt-hi:#1B5A42;--felt-lo:#0B2A1F;--rail:#2A1D14;--rail-hi:#4A3524;--gold:#D4AF37;--gold-2:#F1D479;--gold-soft:rgba(212,175,55,.16)}
 body{background:radial-gradient(ellipse 120% 80% at 50% -10%,#16261F 0%,#0B0E0D 55%,#070908 100%)}
@@ -639,7 +652,6 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
           <div class="center">
             <div class="board" id="board"></div>
             <div class="potrow"><span class="potline">팟</span><span class="pot num" id="pot">0</span><span class="stagetag" id="stageTag"></span></div>
-            <div class="msg" id="msg"></div>
           </div>
           <div class="ann" id="ann"></div>
           <div class="result" id="result"></div>
@@ -649,6 +661,7 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
       </div>
 
       <div class="dock" id="dock">
+      <div class="msg" id="msg"></div>
       <div class="hero" id="hero">
         <div class="cards" id="heroCards"></div>
         <div class="info">
@@ -2306,13 +2319,15 @@ function render() {
     }
     d.appendChild(cards);
     const plate = document.createElement('div'); plate.className = 'plate';
-    plate.innerHTML = '<div class="nm">' + esc(p.name) + '</div><div class="ch num">' + fmt(p.stack) + '</div>' + (p.last ? '<div class="act ' + actClass(p) + (FX.acts[idx] !== p.last ? ' pop' : '') + '">' + esc(p.last) + '</div>' : '');
+    plate.innerHTML = '<div class="nm">' + avatarHtml(p.name) + esc(p.name) + '</div><div class="ch num">' + fmt(p.stack) + '</div>' + (p.last ? '<div class="act ' + actClass(p) + (FX.acts[idx] !== p.last ? ' pop' : '') + '">' + esc(p.last) + '</div>' : '');
     d.appendChild(plate);
     if (idx === G.btn && !p.out) { const b = document.createElement('div'); b.className = 'dbtn'; b.textContent = 'D'; d.appendChild(b); }
     if (p.away) { const aw = document.createElement('div'); aw.className = 'away'; aw.textContent = p.away === 'bot' ? 'AI 대리' : '자리 비움'; d.appendChild(aw); }
     if (p.sitOut) d.classList.add('folded');
     // 베팅 칩 토큰: 좌석에서 가운데 쪽으로 조금 들어온 자리. 보드 높이의 옆자리면 위·아래로 비켜 보드와 겹치지 않게 한다
-    if (p.bet > 0 && !p.out) {
+    // 폰에서 5명 이상이면 양옆 세로 좌석의 칩은 놓을 자리가 없어(보드·이웃 좌석과 겹침) 위쪽 좌석만 칩을 놓고, 나머지는 플레이트의 액션 띠로 본다
+    const mobMany = window.innerWidth <= 720 && n >= 5;
+    if (p.bet > 0 && !p.out && (!mobMany || y <= 10)) {
       const mob = window.innerWidth <= 720;
       let cx = x + (50 - x) * 0.42, cy = y + (50 - y) * 0.42;
       const bx = mob ? 22 : 30, by = mob ? 41 : 40;                     // 보드가 차지하는 영역(가로·세로 %)
@@ -2351,7 +2366,7 @@ function render() {
   $('hero').querySelectorAll('.bubble').forEach((b) => b.remove());
   { const bub = bubbleFor(me.name); if (bub) $('hero').appendChild(bub); }
   const dealerMe = G.btn === 0 ? ' · 딜러' : '';
-  $('heroName').textContent = (MODE.net ? esc(me.name) : '나') + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '') + (MODE.net && me.rebuys ? (TOUR.info ? ' · 리바인 ' + me.rebuys + '회' : ' · 부활 ' + me.rebuys + '회') : '') + (MODE.net && TOUR.info ? ' · 순수익 ' + (netProfit(me) >= 0 ? '+' : '') + fmt(netProfit(me)) : '');
+  $('heroName').innerHTML = avatarHtml(MODE.net ? me.name : '나') + (MODE.net ? esc(me.name) : '나') + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '') + (MODE.net && me.rebuys ? (TOUR.info ? ' · 리바인 ' + me.rebuys + '회' : ' · 부활 ' + me.rebuys + '회') : '') + (MODE.net && TOUR.info ? ' · 순수익 ' + (netProfit(me) >= 0 ? '+' : '') + fmt(netProfit(me)) : '');
   if (me.hole.length && !me.out && me.hole[0]) {
     const bf = HE.bestFive(me.hole.concat(REVEAL.on ? G.board.slice(0, nBoard) : G.board));
     $('heroMade').innerHTML = '현재 <b>' + HE.handName(bf.score) + '</b>';
@@ -2363,6 +2378,11 @@ function render() {
   renderLog();
 }
 const actClass = (p) => p.lastType || '';
+/** 아바타: 이름 첫 글자 + 이름에서 정한 색 (같은 이름은 항상 같은 색) */
+function avatarHtml(name) {
+  const s = String(name || '?'); let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+  return '<span class="av" style="--h:' + h + '">' + esc(s[0]) + '</span>';
+}
 /** 차례 카드(테이블 오른쪽 위): 누구 차례인지, 내 차례면 남은 시간과 진행 바 */
 const TURNCLK = { sec: 0, limit: 0 };
 function renderTurnCard() {
