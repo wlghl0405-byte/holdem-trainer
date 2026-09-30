@@ -53,7 +53,7 @@ main{display:grid;grid-template-columns:1fr 340px;min-height:0}
 aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;padding:14px}
 
 /* ── 테이블 ── */
-.tablewrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.tablewrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
 .felt{
   position:relative;width:min(100%,860px);aspect-ratio:16/9;border-radius:46% / 52%;
   background:radial-gradient(ellipse at 50% 44%, var(--felt-hi) 0%, var(--felt) 58%, #0F3325 100%);
@@ -63,9 +63,9 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 .center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;width:82%;z-index:3}
 .potline{font-size:12px;color:rgba(255,255,255,.5);font-weight:650;letter-spacing:.04em}
 /* 토너먼트 레벨 시계: 펠트 왼쪽 위 모서리(타원 바깥 여백)에 항상 표시 */
-.tourclock{position:absolute;left:6px;top:6px;z-index:4;pointer-events:none;background:rgba(8,13,11,.86);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:6px 10px 5px;line-height:1.2;text-align:left;min-width:92px}
-.tourclock .lv{font-size:11px;font-weight:700;color:var(--ink-2);letter-spacing:.02em;white-space:nowrap}
-.tourclock .tm{font-size:19px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;margin-top:1px}
+.tourclock{position:absolute;left:8px;top:6px;z-index:4;pointer-events:none;background:rgba(8,13,11,.9);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:8px 18px 8px;line-height:1.1;text-align:left;min-width:170px}
+.tourclock .lv{font-size:14px;font-weight:700;color:var(--ink-2);letter-spacing:.02em;white-space:nowrap}
+.tourclock .tm{font-size:52px;font-weight:900;color:var(--gold);font-variant-numeric:tabular-nums;margin-top:0;letter-spacing:-.01em}
 .tourclock .tm.hot{color:#F0A29A}
 .tourclock .nx{font-size:10.5px;color:#BFF0D6;font-weight:700;white-space:nowrap;margin-top:1px}
 .pot{font-size:22px;font-weight:800;color:var(--gold)}
@@ -553,8 +553,8 @@ header .tbtn{white-space:nowrap}
           </div>
           <div class="ann" id="ann"></div>
           <div class="result" id="result"></div>
-          <div class="tourclock" id="tourClock" hidden></div>
         </div>
+        <div class="tourclock" id="tourClock" hidden></div>
       </div>
 
       <div class="hero" id="hero">
