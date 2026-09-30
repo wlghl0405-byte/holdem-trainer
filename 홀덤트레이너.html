@@ -366,6 +366,7 @@ header .tbtn{white-space:nowrap}
   /* 토너먼트: 폰에서는 펠트 위 시계 대신 헤더에 레벨·남은 시간을 보여준다 (좌석과 겹치지 않게) */
   body.tour .hstat span:nth-child(2){display:inline}
   body.tour .hstat span:nth-child(3){display:none}
+  body.tour .hstat .lbl{display:none}   /* 폰 헤더 폭 확보: 라벨 없이 Lv·블라인드·시계만 */
   body.tour .tourclock{display:none}
   header .tbtn{padding:6px 8px;font-size:11.5px}
   .tbtn{padding:6px 10px;font-size:11.5px}
@@ -657,7 +658,7 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
     <h1>육지덤</h1>
     <div class="hstat">
       <span>핸드 <b class="num" id="hHand">0</b></span>
-      <span>블라인드 <b class="num" id="hBlind">50 / 100</b></span>
+      <span><i class="lbl">블라인드 </i><b class="num" id="hBlind">50 / 100</b></span>
       <span>난이도 <b id="hDiff">중수</b></span>
     </div>
     <button class="tbtn" id="btnAway" hidden>자리 비움</button>
@@ -2146,7 +2147,7 @@ function updateBlindHeader() {
   if (!MODE.net || !TOUR.info) { el.textContent = fmt(SB()) + ' / ' + fmt(CFG.bb); if (tc) tc.hidden = true; return; }
   const t = TOUR.info, running = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river' || G.stage === 'showdown';
   const left = running ? t.leftMs - (Date.now() - TOUR.at) : t.leftMs;   // 서버 시계는 핸드가 도는 동안만 흐른다
-  el.innerHTML = 'Lv' + t.level + ' ' + fmt(t.sb) + ' / ' + fmt(t.bb) + '<small>' + (t.nextLevel ? '다음 핸드 ' + fmt(Math.floor(t.nextBB / 2)) + '/' + fmt(t.nextBB) : mmss(left)) + '</small>';
+  el.innerHTML = 'Lv' + t.level + ' ' + fmt(t.sb) + ' / ' + fmt(t.bb) + '<small>' + (t.nextLevel ? '→ ' + fmt(Math.floor(t.nextBB / 2)) + '/' + fmt(t.nextBB) : mmss(left)) + '</small>';
   if (tc) {   // 펠트 위 상시 시계 (폰에서는 헤더에 블라인드가 없어 이것만 보인다)
     tc.hidden = false;
     tc.innerHTML = '<div class="lv">Lv' + t.level + ' · ' + fmt(t.sb) + '/' + fmt(t.bb) + '</div>' +
