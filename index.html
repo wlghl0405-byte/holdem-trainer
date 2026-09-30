@@ -651,6 +651,16 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
   .betchip{font-size:10px;padding:2px 7px 2px 3px;gap:4px}.betchip::before{width:11px;height:11px}
   .board{gap:5px}
 }
+/* v1.3.5: 액션 버튼 한 줄 (폴드·콜·삥/따당·쿼터·하프·풀·올인). 두 줄로 나뉘던 배팅 버튼을 같은 줄에 붙인다 */
+.actions{flex-direction:row;flex-wrap:nowrap;gap:6px;height:64px;min-height:0;padding:6px 0 2px;align-items:stretch;justify-content:center}
+.actrow,.betbox{display:contents}
+.actions .abtn{flex:1 1 0;min-width:0;max-width:150px;height:52px;padding:3px 2px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.15;font-size:13.5px;border-radius:11px;white-space:nowrap}
+.actions .abtn small{display:block;margin:0;font-size:11px;font-weight:700;opacity:.9}
+.actions .abtn.bet small{color:var(--gold-2)}
+.actions .abtn.allin{order:2}
+.actions .actrow.single .abtn{flex:0 0 auto;min-width:180px;max-width:60%}
+@media (max-width:1080px){.actions{height:56px;padding:4px 0 2px}.actions .abtn{height:46px;font-size:12.5px;max-width:none}.actions .abtn small{font-size:10.5px}}
+@media (max-width:720px){.actions{gap:4px;height:50px;padding:3px 0 0}.actions .abtn{height:44px;font-size:12px;padding:2px 1px;border-radius:9px}.actions .abtn small{font-size:10px}}
 </style>
 </head>
 <body>
@@ -1713,7 +1723,7 @@ function renderActions() {
   };
   mk('폴드', 'fold', () => doAction(0, 'fold'));
   if (toCall === 0) mk('체크', '', () => doAction(0, 'check'));
-  else mk('콜 ' + fmt(Math.min(toCall, me.stack)), 'call', () => doAction(0, 'call'));
+  else mk('콜', 'call', () => doAction(0, 'call')).innerHTML = '콜<small>' + fmt(Math.min(toCall, me.stack)) + '</small>';
 
   // 베팅 버튼: 슬라이더 대신 포커 앱처럼 정해진 크기를 바로 누른다
   const minTo = Math.min(G.maxBet + G.minRaise, me.bet + me.stack);   // 삥 = 최소 벳/레이즈
