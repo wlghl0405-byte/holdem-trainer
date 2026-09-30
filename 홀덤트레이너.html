@@ -481,6 +481,12 @@ header .tbtn{white-space:nowrap}
 .mtab button.on{background:var(--gold);color:#20180A}
 .modal .netonly{display:none}.modal.online .netonly{display:block}.modal.online .localonly{display:none}
 .modal.online .netcfg{display:none}.modal.online.hostcfg .netcfg{display:block}
+.modal.online .touronly{display:none}.modal.online.hostcfg.tour .touronly{display:block}.modal.online.hostcfg.tour .cashonly{display:none}
+.ann.level{border-color:#7FD3A6;color:#BFF0D6;background:rgba(31,111,67,.35);font-size:17px;box-shadow:0 0 30px rgba(127,211,166,.45)}
+.ann.level small{font-size:11.5px;color:var(--ink-2);margin-left:6px;font-weight:600}
+.rtour{margin-top:10px;text-align:left}.rtour table{border-collapse:collapse;width:100%;font-size:13px}.rtour th{font-weight:600;color:var(--mute);text-align:left;padding:3px 8px;font-size:11.5px}
+.rtour td{padding:4px 8px;border-top:1px solid rgba(255,255,255,.08)}.rtour td.n{text-align:right;font-variant-numeric:tabular-nums}.rtour tr.me td{color:#F3D77A;font-weight:700}.rtour td.neg{color:#F0A29A}.rtour td.pos{color:#BFF0D6}
+#hBlind small{font-weight:600;color:var(--mute);margin-left:4px}
 .modal{min-width:0}
 .netrow{flex-wrap:wrap}.netrow .half{min-width:120px}.joinbox .numin{min-width:0}
 .netrow{display:flex;gap:8px;align-items:stretch;margin-top:4px}
@@ -627,6 +633,24 @@ header .tbtn{white-space:nowrap}
       <div class="opts" id="optOpp"></div>
     </div>
     <h3 class="netcfg cfghead">방 설정 <span>방장만 바꿀 수 있습니다</span></h3>
+    <div class="fld netonly netcfg">
+      <label>방식</label>
+      <div class="opts" id="optMode"></div>
+      <p class="hint touronly">토너먼트: 블라인드 100/200에서 시작해 레벨 시간마다 오릅니다. 파산하면 시작 칩으로 리바인, 순위는 순수익(칩 − 바이인 총액) 기준.</p>
+    </div>
+    <div class="fld netonly touronly">
+      <label>레벨 시간</label>
+      <div class="opts" id="optLevel"></div>
+    </div>
+    <div class="fld netonly touronly">
+      <label>리바인 횟수</label>
+      <div class="opts" id="optRebuy"></div>
+    </div>
+    <div class="fld netonly touronly">
+      <label>리바인 마감</label>
+      <div class="opts" id="optRebuyUntil"></div>
+      <p class="hint">마감 레벨이 지나면 파산은 탈락(관전)입니다.</p>
+    </div>
     <div class="fld netcfg">
       <label>난이도</label>
       <div class="opts" id="optDiff"></div>
@@ -649,7 +673,7 @@ header .tbtn{white-space:nowrap}
       <div class="opts" id="optStack"></div>
       <input class="numin num" id="inStack" type="number" min="100" step="1000" inputmode="numeric">
     </div>
-    <div class="fld netcfg">
+    <div class="fld netcfg cashonly">
       <label>최소 베팅 (빅블라인드)</label>
       <div class="opts" id="optBB"></div>
       <input class="numin num" id="inBB" type="number" min="2" step="10" inputmode="numeric">
@@ -1512,7 +1536,7 @@ const SUIT = HE.SUIT_CH;
 const RED = (s) => s === 1 || s === 2;
 
 /* ───────── 상태 ───────── */
-const CFG = { opp: 3, diff: 'normal', advisor: true, stack: 10000, bb: 100, speed: 'slow', turn: 10 };
+const CFG = { opp: 3, diff: 'normal', advisor: true, stack: 10000, bb: 100, speed: 'slow', turn: 10, mode: 'cash', levelMin: 5, rebuyMax: 2, rebuyUntil: 4 };
 // 진행 속도. 초보자가 흐름을 따라갈 수 있도록 기본은 '느리게'.
 const SPEEDS = {
   slow: { ai: 1500, stage: 1400, ann: 1500, reveal: 1 },
@@ -1601,7 +1625,7 @@ function ph() { const d = document.createElement('div'); d.className = 'card ph'
 
 /* ───────── 혼자 연습: 게임 시작·진행 ───────── */
 function newGame() {
-  MODE.net = false; G = T; RES = null; REVEAL.hand = 0;
+  MODE.net = false; G = T; RES = null; REVEAL.hand = 0; TOUR.info = null;
   T.reset();
   T.addPlayer({ id: 0, name: '나', human: true, stack: CFG.stack });
   T.addBots(CFG.opp);
@@ -1718,7 +1742,9 @@ function showResult(res) {
   render();
   flyChips(Array.from(FX.winners));
   // 온라인에서 칩이 0이 되면: 파산했다는 것과 얼마로 다시 시작하는지 결과 카드에서 바로 알려준다
-  const bust = MODE.net && me.stack <= 0 && !iWon
+  const bust = MODE.net && me.stack <= 0 && !iWon && TOUR.info
+    ? '<div class="rbust"><div class="rbtitle">' + (canRebuyTour(me) ? '파산' : '탈락') + '</div><div class="rbsub">' + (canRebuyTour(me) ? '다음 핸드에 <b>리바인 ' + fmt(TOUR.info.buyin) + '</b>으로 다시 시작합니다 (' + ((me.rebuys || 0) + 1) + '/' + TOUR.info.rebuyMax + '회)' : '리바인을 다 썼거나 마감이 지났습니다. 관전 모드로 전환됩니다') + '</div></div>'
+    : MODE.net && me.stack <= 0 && !iWon
     ? '<div class="rbust"><div class="rbtitle">파산</div><div class="rbsub">칩을 모두 잃었습니다. 다음 핸드에 <b>시작 칩의 ' + rebuyPct(me) + '%</b> = <b>' + fmt(rebuyAmt(me)) + '</b>으로 다시 시작합니다' + ((me.rebuys || 0) > 0 ? ' <span class="rbn">' + ((me.rebuys || 0) + 1) + '번째 부활</span>' : '') + '</div></div>'
     : '';
   $('result').innerHTML = (kind === 'win' ? confettiHtml() : '') +
@@ -1897,8 +1923,9 @@ function netHandle(m) {
     if (m.view.cfg) { CFG.bb = m.view.cfg.bb; CFG.stack = m.view.cfg.stack; CFG.diff = m.view.cfg.diff || CFG.diff; if (m.view.cfg.speed) CFG.speed = m.view.cfg.speed; }
     if (m.view.result) RES = m.view.result;
     $('ov').classList.remove('on');
-    $('hBlind').textContent = fmt(SB()) + ' / ' + fmt(CFG.bb);
-    $('hDiff').textContent = '방 ' + NET.code + ' · ' + (DIFF_NAME[CFG.diff] || '');
+    TOUR.info = m.view.tour || null; TOUR.at = Date.now();
+    updateBlindHeader();
+    $('hDiff').textContent = '방 ' + NET.code + ' · ' + (DIFF_NAME[CFG.diff] || '') + (TOUR.info ? ' · 토너먼트' : '');
     document.querySelectorAll('#mtabs button[data-sec="adv"]').forEach((b) => { b.style.display = 'none'; });
     document.querySelectorAll('#side .sec[data-sec="adv"]').forEach((b) => { b.style.display = 'none'; });
     $('btnAdv').style.display = 'none';
@@ -1913,6 +1940,16 @@ function netHandle(m) {
     else if (m.name === 'hand') { RES = null; $('result').classList.remove('on'); }
     else if (m.name === 'rebuy') onRebuy(m.data);
     else if (m.name === 'bust') { chatPush('알림', m.data.name + ' 파산으로 테이블을 떠났습니다', false); }
+    else if (m.name === 'level') {
+      announce('<span class="who">블라인드 업</span>Lv' + m.data.level + ' ' + fmt(m.data.sb) + ' / ' + fmt(m.data.bb) + '<small>' + (m.data.immediate ? '다음 핸드부터' : '이번 핸드 끝나고') + '</small>', 'level', 4000);
+      chatPush('알림', '블라인드 업 · Lv' + m.data.level + ' ' + fmt(m.data.sb) + '/' + fmt(m.data.bb), false);
+    }
+    else if (m.name === 'elim') {
+      const mine = m.data.name === NET.name;
+      if (mine) announce('<span class="who">탈락</span>' + m.data.rank + '위 <small>관전 모드</small>', 'rebuy', 4000);
+      else { CHAT.bubbles[m.data.name] = { text: '탈락 · ' + m.data.rank + '위', emote: false, until: Date.now() + 4500 }; setTimeout(render, 4700); }
+      chatPush('알림', m.data.name + ' 탈락 (' + m.data.rank + '위)', false);
+    }
   } else if (m.t === 'paused') {
     $('msg').innerHTML = '<b>잠시 멈춤</b><br>' + esc((m.names || []).join(', ')) + ' 자리 비움';
   } else if (m.t === 'countdown') {
@@ -1921,9 +1958,10 @@ function netHandle(m) {
     if (G.toAct === 0) $('msg').innerHTML = '<span class="pill' + (m.sec <= 3 ? ' hot' : '') + '">내 차례 · ' + m.sec + '초</span>';
   } else if (m.t === 'gameover') {
     NET.lobby = m.lobby || NET.lobby;
-    $('msg').innerHTML = '<b>게임 종료</b><br>' + esc(m.winner || '') + ' 승리';
+    $('msg').innerHTML = '<b>' + (m.mode === 'tour' ? '토너먼트 종료' : '게임 종료') + '</b><br>' + esc(m.winner || '') + ' 승리';
     $('actions').innerHTML = '';
-    setTimeout(() => { $('ov').classList.add('on'); renderLobby(); }, 2500);
+    if (m.mode === 'tour' && m.ranking) { showTourResult(m.ranking); setTimeout(() => { $('ov').classList.add('on'); renderLobby(); }, 9000); }
+    else setTimeout(() => { $('ov').classList.add('on'); renderLobby(); }, 2500);
   } else if (m.t === 'chat') {
     chatPush(m.name, m.text, m.name === NET.name);
   } else if (m.t === 'pong') {
@@ -1951,6 +1989,27 @@ function netHandle(m) {
     NET.auto = false;
     netStatus(m.msg, true);
   }
+}
+/** 토너먼트 표시: 헤더에 레벨·블라인드·다음 레벨까지 남은 시간(서버가 준 잔여 시간을 화면에서 1초씩 줄인다) */
+const TOUR = { info: null, at: 0 };
+const mmss = (ms) => { const t = Math.max(0, Math.round(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+function updateBlindHeader() {
+  const el = $('hBlind');
+  if (!MODE.net || !TOUR.info) { el.textContent = fmt(SB()) + ' / ' + fmt(CFG.bb); return; }
+  const t = TOUR.info, left = t.leftMs - (Date.now() - TOUR.at);
+  el.innerHTML = 'Lv' + t.level + ' ' + fmt(t.sb) + ' / ' + fmt(t.bb) + '<small>' + (t.nextLevel ? '다음 핸드 ' + fmt(Math.floor(t.nextBB / 2)) + '/' + fmt(t.nextBB) : mmss(left)) + '</small>';
+}
+if (typeof setInterval === 'function') setInterval(() => { if (MODE.net && TOUR.info) updateBlindHeader(); }, 1000);
+/** 토너먼트 종료 순위표 (순수익 기준). 결과 카드 자리에 띄운다 */
+function showTourResult(rows) {
+  const my = rows.find((r) => r.name === NET.name);
+  const kind = my && my.place === 1 ? 'win' : 'lose';
+  const tr = rows.map((r) => '<tr' + (r.name === NET.name ? ' class="me"' : '') + '><td class="n">' + r.place + '</td><td>' + esc(r.name) + (r.bot ? ' <small>봇</small>' : '') + '</td><td class="n ' + (r.net > 0 ? 'pos' : r.net < 0 ? 'neg' : '') + '">' + (r.net > 0 ? '+' : '') + fmt(r.net) + '</td><td class="n">' + fmt(r.stack) + '</td><td class="n">' + r.rebuys + '</td></tr>').join('');
+  $('result').innerHTML = (kind === 'win' ? confettiHtml() : '') +
+    '<div class="rcard ' + kind + '"><div class="rlabel ' + kind + '">' + (kind === 'win' ? '1위' : (my ? my.place + '위' : '종료')) + '</div>' +
+    '<div class="rwho">토너먼트 종료 · 순수익 순위</div>' +
+    '<div class="rtour"><table><tr><th>순위</th><th>이름</th><th style="text-align:right">순수익</th><th style="text-align:right">칩</th><th style="text-align:right">리바인</th></tr>' + tr + '</table></div></div>';
+  $('result').classList.add('on');
 }
 function netStatus(text, bad) {
   const el = $('netStatus');
@@ -2002,7 +2061,7 @@ function renderLobby() {
     b.onclick = () => {
       if (NET.host && (!L.playing || G.stage === 'idle' || G.stage === 'over')) {
         clampStake();
-        netSend({ t: 'start', cfg: { stack: CFG.stack, bb: CFG.bb, diff: CFG.diff, speed: CFG.speed, turn: CFG.turn } });
+        netSend({ t: 'start', cfg: { stack: CFG.stack, bb: CFG.bb, diff: CFG.diff, speed: CFG.speed, turn: CFG.turn, mode: CFG.mode, levelMin: CFG.levelMin, rebuyMax: CFG.rebuyMax, rebuyUntil: CFG.rebuyUntil } });
         $('ov').classList.remove('on');
         return;
       }
@@ -2149,7 +2208,7 @@ function render() {
   $('hero').querySelectorAll('.bubble').forEach((b) => b.remove());
   { const bub = bubbleFor(me.name); if (bub) $('hero').appendChild(bub); }
   const dealerMe = G.btn === 0 ? ' · 딜러' : '';
-  $('heroName').textContent = (MODE.net ? esc(me.name) : '나') + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '') + (MODE.net && me.rebuys ? ' · 부활 ' + me.rebuys + '회' : '');
+  $('heroName').textContent = (MODE.net ? esc(me.name) : '나') + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '') + (MODE.net && me.rebuys ? (TOUR.info ? ' · 리바인 ' + me.rebuys + '회' : ' · 부활 ' + me.rebuys + '회') : '') + (MODE.net && TOUR.info ? ' · 순수익 ' + (netProfit(me) >= 0 ? '+' : '') + fmt(netProfit(me)) : '');
   if (me.hole.length && !me.out && me.hole[0]) {
     const bf = HE.bestFive(me.hole.concat(REVEAL.on ? G.board.slice(0, nBoard) : G.board));
     $('heroMade').innerHTML = '현재 <b>' + HE.handName(bf.score) + '</b>';
@@ -2210,19 +2269,23 @@ function flyChips(viewSeats) {
 }
 /** 시작 칩 대비 부활 비율·금액 (서버 규칙과 같다: 처음 50%, 그 뒤 10%) */
 const rebuyPct = (p) => ((p.rebuys || 0) === 0 ? 50 : 10);
+/** 토너먼트: 지금 파산하면 리바인 가능한지 (서버 규칙과 같다: 횟수 남음 + 마감 레벨 이내) */
+const canRebuyTour = (p) => { const t = TOUR.info; return !!t && (p.rebuys || 0) < t.rebuyMax && (!t.rebuyUntil || t.level <= t.rebuyUntil); };
+const bustLine = (p) => (!TOUR.info ? '다음 핸드 ' + fmt(rebuyAmt(p)) + '으로 재시작 (' + rebuyPct(p) + '%)' : canRebuyTour(p) ? '다음 핸드 리바인 ' + fmt(TOUR.info.buyin) + ' (' + ((p.rebuys || 0) + 1) + '/' + TOUR.info.rebuyMax + '회)' : '리바인 불가 · 탈락');
+const netProfit = (p) => (TOUR.info ? p.stack - TOUR.info.buyin * (1 + (p.rebuys || 0)) : 0);
 const rebuyAmt = (p) => Math.max(CFG.bb, Math.round(CFG.stack * rebuyPct(p) / 100));
 /** 누군가 부활했다: 나면 크게 알리고 칩이 날아온다, 남이면 좌석 말풍선 */
 function onRebuy(d) {
   const mine = d.name === NET.name;
-  const label = '부활 +' + fmt(d.amount) + ' (시작 칩의 ' + d.pct + '%)';
+  const label = d.tour ? '리바인 +' + fmt(d.amount) + ' (' + d.count + '/' + d.max + '회)' : '부활 +' + fmt(d.amount) + ' (시작 칩의 ' + d.pct + '%)';
   if (mine) {
-    announce('<span class="who">파산 후 부활</span>+' + fmt(d.amount) + ' <small>시작 칩의 ' + d.pct + '% · ' + d.count + '번째</small>', 'rebuy', 4000);
+    announce(d.tour ? '<span class="who">리바인</span>+' + fmt(d.amount) + ' <small>' + d.count + '/' + d.max + '회 사용</small>' : '<span class="who">파산 후 부활</span>+' + fmt(d.amount) + ' <small>시작 칩의 ' + d.pct + '% · ' + d.count + '번째</small>', 'rebuy', 4000);
     setTimeout(() => flyChips([0]), 150);
   } else {
     CHAT.bubbles[d.name] = { text: label, emote: false, until: Date.now() + 4500 };
     setTimeout(render, 4700);
   }
-  chatPush('알림', d.name + ' ' + label + ' · ' + d.count + '번째 부활', false);
+  chatPush('알림', d.name + ' ' + label + (d.tour ? '' : ' · ' + d.count + '번째 부활'), false);
 }
 function confettiHtml() {
   const COLORS = ['#F3D77A', '#C9A227', '#fff', '#DE6A60', '#4B84D8', '#7FD3A6'];
@@ -2250,7 +2313,8 @@ function renderActions() {
   if (G.stage === 'paused') { $('msg').innerHTML = '<b>잠시 멈춤</b><br>칠 사람이 1명뿐'; return; }
   if (G.stage === 'idle' || G.stage === 'over') return showStartButton();
   if (G.toAct !== 0 || G.stage === 'showdown' || me.folded || me.out) {
-    if (MODE.net && (me.out || me.stack <= 0)) $('msg').innerHTML = '<b>파산</b><br>다음 핸드 ' + fmt(rebuyAmt(me)) + '으로 재시작 (' + rebuyPct(me) + '%)';
+    if (MODE.net && me.out && TOUR.info) $('msg').innerHTML = '<b>탈락</b><br>관전 중';
+    else if (MODE.net && (me.out || me.stack <= 0)) $('msg').innerHTML = '<b>파산</b><br>' + bustLine(me);
     else if (G.stage === 'showdown') { if (REVEAL.on) $('msg').textContent = '쇼다운 · 패 공개 중'; }
     else $('msg').textContent = G.toAct >= 0 ? G.players[G.toAct].name + ' 차례' : (MODE.net && G.stage === 'idle' ? '방장이 시작하면 딜' : '');
     return;
@@ -2493,7 +2557,12 @@ function buildOpts() {
   mk('optAdv', [[true, '받기', '승률·추천 표시'], [false, '안받기', '혼자 판단']], () => CFG.advisor, (v) => CFG.advisor = v);
   mk('optSpeed', [['slow', '느리게', '흐름 파악용'], ['normal', '보통', ''], ['fast', '빠르게', '익숙해지면']], () => CFG.speed, (v) => CFG.speed = v);
   mk('optTurn', [[3, '3초'], [5, '5초'], [10, '10초'], [0, '무제한']], () => CFG.turn, (v) => CFG.turn = v);
-  mk('optStack', [[10000, '1만'], [20000, '2만'], [50000, '5만'], [100000, '10만']], () => CFG.stack, (v) => { CFG.stack = v; syncStake(); });
+  mk('optMode', [['cash', '캐시', '블라인드 고정'], ['tour', '토너먼트', '블라인드 상승 · 리바인 제한']], () => CFG.mode, (v) => { CFG.mode = v; if (v === 'tour') { CFG.bb = 200; if (CFG.stack < 20000) CFG.stack = 20000; } });
+  mk('optLevel', [[3, '3분'], [5, '5분'], [7, '7분'], [10, '10분']], () => CFG.levelMin, (v) => CFG.levelMin = v);
+  mk('optRebuy', [[0, '없음'], [1, '1회'], [2, '2회'], [3, '3회']], () => CFG.rebuyMax, (v) => CFG.rebuyMax = v);
+  mk('optRebuyUntil', [[0, '없음'], [3, '3레벨'], [4, '4레벨'], [6, '6레벨']], () => CFG.rebuyUntil, (v) => CFG.rebuyUntil = v);
+  { const mo = $('ov') && $('ov').querySelector('.modal'); if (mo) mo.classList.toggle('tour', CFG.mode === 'tour'); }
+  mk('optStack', CFG.mode === 'tour' ? [[10000, '1만', '50BB'], [20000, '2만', '100BB'], [30000, '3만', '150BB'], [50000, '5만', '250BB']] : [[10000, '1만'], [20000, '2만'], [50000, '5만'], [100000, '10만']], () => CFG.stack, (v) => { CFG.stack = v; syncStake(); });
   mk('optBB', [[100, '100'], [200, '200'], [500, '500'], [1000, '1,000']], () => CFG.bb, (v) => { CFG.bb = v; syncStake(); });
   syncStake();
 }
@@ -2504,12 +2573,13 @@ function syncStake() {
   if (s.value != CFG.stack) s.value = CFG.stack;
   if (b.value != CFG.bb) b.value = CFG.bb;
   const ratio = Math.floor(CFG.stack / CFG.bb);
-  let msg = '스몰블라인드 ' + fmt(SB()) + ' · 시작 칩이 최소 베팅의 ' + fmt(ratio) + '배';
+  let msg = CFG.mode === 'tour' ? '토너먼트 시작 블라인드 100 / 200 · 시작 칩 ' + fmt(Math.floor(CFG.stack / 200)) + 'BB' : '스몰블라인드 ' + fmt(SB()) + ' · 시작 칩이 최소 베팅의 ' + fmt(ratio) + '배';
   if (ratio < 10) msg += ' (너무 적어 금방 올인이 됩니다)';
   $('bbHint').textContent = msg;
 }
 function clampStake() {
   CFG.stack = Math.max(100, Math.min(10000000, Math.round(+$('inStack').value || 10000)));
+  if (CFG.mode === 'tour') { CFG.bb = 200; CFG.stack = Math.max(2000, CFG.stack); return; }
   CFG.bb = Math.max(2, Math.min(Math.floor(CFG.stack / 2), Math.round(+$('inBB').value || 100)));
 }
 $('inStack').oninput = () => { clampStake(); syncStake(); buildOpts(); };

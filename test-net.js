@@ -5,6 +5,7 @@
  */
 process.env.PORT = '0';
 process.env.EMPTY_ROOM_MS = '1500';      // 테스트에서는 빈 방 정리를 짧게
+process.env.TOUR_LEVEL_MS = '2500';       // 토너먼트 레벨 시간을 2.5초로 (블라인드 상승 검증용)
 const { server, rooms } = require('./server.js');
 const WebSocket = require('ws');
 
@@ -213,6 +214,39 @@ function checkView(v, base, label) {
   const botName = proom.table.players[1].name; proom.table.players[1].stack = 0; await waitEvent('bust', 1);
   ok(P.events.some((e) => e.name === 'bust' && e.data.name === botName) && !P.lobby.players.some((p) => p.name === botName), '파산한 봇은 테이블을 떠남 (' + botName + ')');
   P.ws.close();
+
+  // 토너먼트: 100/200 시작, 레벨 시간마다 블라인드 상승(다음 핸드부터), 리바인은 시작 칩으로 횟수 제한, 다 쓰면 탈락(관전), 종료 시 순수익 순위표
+  const Q = client('토너'); await Q.connect(port); Q.send({ t: 'create', name: Q.name }); await sleep(150);
+  Q.send({ t: 'addBot' }); Q.send({ t: 'addBot' }); await sleep(100);
+  Q.send({ t: 'start', cfg: { stack: 20000, bb: 100, diff: 'easy', speed: 'fast', turn: 0, mode: 'tour', levelMin: 5, rebuyMax: 1, rebuyUntil: 0 } }); await sleep(200);
+  const qroom = rooms.get(Q.code);
+  ok(qroom.cfg.mode === 'tour' && qroom.cfg.bb === 200 && qroom.cfg.stack === 20000, '토너먼트 설정: 시작 블라인드 200, 시작 칩 20,000');
+  ok(Q.lastView && Q.lastView.tour && Q.lastView.tour.level === 1 && Q.lastView.tour.sb === 100 && Q.lastView.tour.bb === 200, '화면에 토너먼트 정보(레벨·블라인드·남은 시간) 전달');
+  Q.send({ t: 'deal' });
+  const qShowdown = async () => { const t = Date.now(); while (Date.now() - t < 40000 && qroom.table.stage !== 'showdown') await sleep(50); return qroom.table.stage === 'showdown'; };
+  const qEvent = async (name, n) => { const t = Date.now(); while (Date.now() - t < 40000 && Q.events.filter((e) => e.name === name).length < n) await sleep(50); };
+  await qEvent('level', 1);
+  const lv = Q.events.find((e) => e.name === 'level');
+  ok(lv && lv.data.level === 2 && lv.data.bb === 400 && lv.data.sb === 200, '레벨 시간이 지나면 블라인드 업 이벤트 (Lv2 200/400)');
+  { const t = Date.now(); while (Date.now() - t < 40000 && !(qroom.table.stage === 'preflop' && qroom.cfg.bb >= 400)) await sleep(50); }
+  ok(qroom.cfg.bb >= 400 && qroom.table.handNo >= 2, '올라간 블라인드는 다음 핸드부터 적용 (bb=' + qroom.cfg.bb + ', 핸드 ' + qroom.table.handNo + ')');
+  ok(await qShowdown(), '토너먼트 핸드 쇼다운 도달');
+  qroom.table.players[0].stack = 0; await qEvent('rebuy', 1);
+  { const r = Q.events.find((e) => e.name === 'rebuy'); ok(r && r.data.amount === 20000 && r.data.count === 1 && r.data.max === 1 && r.data.tour, '리바인은 시작 칩 그대로 (1/1회)'); }
+  ok(await qShowdown(), '리바인 뒤 다음 핸드 쇼다운 도달');
+  qroom.table.players[0].stack = 0; await qEvent('elim', 1);
+  { const e = Q.events.find((e) => e.name === 'elim'); ok(e && e.data.name === '토너' && e.data.rank === 3, '리바인 횟수를 다 쓰면 탈락 (3위)'); }
+  { const t = Date.now(); while (Date.now() - t < 5000 && !(Q.lastView && Q.lastView.players[0].out)) await sleep(50); }
+  ok(Q.lastView && Q.lastView.players[0].out && Q.lastView.players[0].rebuys === 1, '탈락자는 관전 상태로 자리 유지');
+  // 사람이 모두 탈락하면 봇끼리 돌리지 않고 종료 → 순위표
+  { const t = Date.now(); while (Date.now() - t < 40000 && !Q.gameover) await sleep(50); }
+  ok(Q.gameover && Q.gameover.mode === 'tour' && Array.isArray(Q.gameover.ranking) && Q.gameover.ranking.length === 3, '사람이 모두 탈락하면 토너먼트 종료 + 순위표 수신 (' + (Q.gameover && Q.gameover.ranking ? Q.gameover.ranking.length : 0) + '명)');
+  if (Q.gameover && Q.gameover.ranking) {
+    const R = Q.gameover.ranking; const me = R.find((r) => r.name === '토너'); const first = R[0];
+    ok(first.place === 1 && !first.out && first.net === first.stack - 20000 * (1 + first.rebuys), '1위는 생존자, 순수익 = 칩 − 바이인 총액 (' + first.name + ' ' + first.net + ')');
+    ok(me && me.out && me.net === -40000 && me.place === 3, '탈락자 순수익 = −(바이인 + 리바인) (' + (me && me.net) + ')');
+  }
+  Q.ws.close();
   console.log(`\n통과 ${pass} / 실패 ${fail}`);
   server.close(); process.exit(fail ? 1 : 0);
 })().catch((e) => { console.log('오류', e); process.exit(1); });

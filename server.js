@@ -28,6 +28,10 @@ const EMPTY_ROOM_MS = +process.env.EMPTY_ROOM_MS || 30 * 60 * 1000; // 사람이
 const ROOM_IDLE_MS = 3 * 3600 * 1000; // 아무 일도 없는 방은 3시간 뒤 정리
 // 사람이 파산하면 시작 칩의 50%로, 그 뒤로는 파산할 때마다 10%로 계속 부활한다 (영영 파산은 없다). 봇은 파산하면 테이블을 떠난다
 const rebuyAmount = (cfg, count) => Math.max(cfg.bb, Math.round(cfg.stack * (count === 0 ? 0.5 : 0.1)));
+// 토너먼트: 빅블라인드 표(스몰은 절반). 표를 넘어가면 계속 두 배
+const TOUR_LEVELS = [200, 400, 600, 1000, 1600, 2000, 3000, 4000, 6000, 10000];
+const levelBB = (lv) => (lv <= TOUR_LEVELS.length ? TOUR_LEVELS[lv - 1] : TOUR_LEVELS[TOUR_LEVELS.length - 1] * Math.pow(2, lv - TOUR_LEVELS.length));
+const TOUR_LEVEL_MS = +process.env.TOUR_LEVEL_MS || 0;   // 테스트용: 레벨 시간을 밀리초로 강제
 
 /* ───────── 정적 파일 ───────── */
 const STATIC = { '/': 'index.html', '/index.html': 'index.html', '/engine.js': 'engine.js', '/table.js': 'table.js', '/manifest.webmanifest': 'manifest.webmanifest', '/sw.js': 'sw.js', '/icon.svg': 'icon.svg' };
@@ -56,7 +60,9 @@ class Room {
     this.code = code;
     this.seats = [];              // {name, token, ws, bot, online, leave}
     this.waiting = [];            // 진행 중 들어온 사람 (다음 핸드부터 참여)
-    this.cfg = { stack: 10000, bb: 100, diff: 'normal', speed: 'slow', turn: 10, needHuman: true };   // needHuman: 사람이 아무도 없으면(모두 자리 비움) 봇끼리 돌리지 않고 멈춘다
+    this.cfg = { stack: 10000, bb: 100, diff: 'normal', speed: 'slow', turn: 10, needHuman: true, mode: 'cash', levelMin: 5, rebuyMax: 2, rebuyUntil: 4 };   // needHuman: 사람이 아무도 없으면(모두 자리 비움) 봇끼리 돌리지 않고 멈춘다
+    this.tour = { level: 1, elapsed: 0, pendingLevel: 0, finished: [] };   // 토너먼트: 현재 레벨, 이번 레벨 경과(ms), 다음 핸드부터 적용될 레벨, 탈락자 명단
+    this.levelT = null;
     this.table = new TB.Table(this.cfg, (type, data) => this.onEvent(type, data));
     this.playing = false;
     this.timer = null; this.clock = null;
@@ -121,19 +127,24 @@ class Room {
       bb: 100, diff: ['easy', 'normal', 'hard', 'pro', 'mix'].includes(cfg.diff) ? cfg.diff : 'normal',
       speed: SPEEDS[cfg.speed] ? cfg.speed : 'slow',
       turn: [0, 3, 5, 10].includes(+cfg.turn) ? +cfg.turn : 10,
+      mode: cfg.mode === 'tour' ? 'tour' : 'cash',
+      levelMin: [3, 5, 7, 10].includes(+cfg.levelMin) ? +cfg.levelMin : 5,
+      rebuyMax: [0, 1, 2, 3].includes(+cfg.rebuyMax) ? +cfg.rebuyMax : 2,
+      rebuyUntil: [0, 3, 4, 6].includes(+cfg.rebuyUntil) ? +cfg.rebuyUntil : 4,   // 0 = 마감 없음
     });
-    this.cfg.bb = Math.max(2, Math.min(Math.floor(this.cfg.stack / 2), Math.round(+cfg.bb) || 100));
+    if (this.cfg.mode === 'tour') { this.cfg.stack = Math.max(levelBB(1) * 10, this.cfg.stack); this.cfg.bb = levelBB(1); }
+    else this.cfg.bb = Math.max(2, Math.min(Math.floor(this.cfg.stack / 2), Math.round(+cfg.bb) || 100));
   }
   /** 테이블 깔기: 모두 착석시키고 첫 핸드 전(idle) 상태로 대기. 방장이 테이블에서 '시작'을 누르면 deal */
   start(cfg) {
     if (this.playing) {
       const st = this.table.stage;
       if (st !== 'idle' && st !== 'over') return false;
-      this.applyCfg(cfg || {}); this.table.players.forEach((p) => { p.stack = this.cfg.stack; p.out = false; p.rebuys = 0; }); this.broadcastLobby(); this.dirty = true; this.broadcastState();
+      this.applyCfg(cfg || {}); this.resetTour(); this.table.players.forEach((p) => { p.stack = this.cfg.stack; p.out = false; p.rebuys = 0; p.rank = 0; }); this.broadcastLobby(); this.dirty = true; this.broadcastState();
       return true;
     }
     const live = this.seats.filter((s) => !s.leave);
-    this.applyCfg(cfg || {});
+    this.applyCfg(cfg || {}); this.resetTour();
     this.seats = live; this.waiting = [];
     this.table.reset();
     this.seats.forEach((s, i) => { const p = this.table.addPlayer({ id: i, name: s.name, human: !s.bot, bot: s.bot, stack: this.cfg.stack, style: s.bot ? TB.Table.styleFor(this.cfg.diff) : undefined }); p.online = s.online; s.player = p; });
@@ -154,7 +165,23 @@ class Room {
     // 파산 처리: 봇은 테이블을 떠나고, 사람은 시작 칩의 50%(처음)·10%(그 뒤)로 계속 부활
     for (let i = this.seats.length - 1; i >= 0; i--) {
       const s = this.seats[i]; const p = s.player;
-      if (!p || p.stack > 0) continue;
+      if (!p || p.stack > 0 || p.out) continue;
+      if (this.cfg.mode === 'tour') {
+        // 토너먼트: 리바인 횟수·마감 레벨 안이면 시작 칩으로 다시, 아니면 탈락(사람은 관전, 봇은 퇴장)
+        p.rebuys = p.rebuys || 0;
+        const canRebuy = p.rebuys < this.cfg.rebuyMax && (!this.cfg.rebuyUntil || this.tour.level <= this.cfg.rebuyUntil);
+        if (canRebuy) {
+          p.rebuys++; p.stack = this.cfg.stack;
+          this.broadcast({ t: 'event', name: 'rebuy', data: { name: s.name, amount: this.cfg.stack, count: p.rebuys, max: this.cfg.rebuyMax, tour: true } });
+        } else {
+          const rank = T.players.filter((q) => q.stack > 0 && !q.out).length + 1;
+          p.out = true; p.rank = rank;
+          this.tour.finished.push({ name: s.name, bot: !!s.bot, rebuys: p.rebuys, stack: 0, rank });
+          this.broadcast({ t: 'event', name: 'elim', data: { name: s.name, rank, bot: !!s.bot } });
+          if (s.bot) { const pi = T.players.indexOf(p); if (pi >= 0) T.players.splice(pi, 1); this.seats.splice(i, 1); }
+        }
+        continue;
+      }
       if (s.bot) { const pi = T.players.indexOf(p); if (pi >= 0) T.players.splice(pi, 1); this.seats.splice(i, 1); this.broadcast({ t: 'event', name: 'bust', data: { name: s.name, bot: true } }); continue; }
       p.rebuys = p.rebuys || 0;
       const pct = p.rebuys === 0 ? 50 : 10;
@@ -167,6 +194,49 @@ class Room {
     this.waiting = [];
     T.players.forEach((p, i) => { p.id = i; });
     // 파산자는 제외 상태로 남고(관전), 방장이 다시 시작하면 복구된다
+    // 토너먼트: 시간이 차서 올라간 레벨은 여기서(다음 핸드 전에) 블라인드에 반영한다
+    if (this.cfg.mode === 'tour' && this.tour.pendingLevel > this.tour.level) { this.tour.level = this.tour.pendingLevel; this.cfg.bb = levelBB(this.tour.level); }
+  }
+
+  /* ── 토너먼트 ── */
+  resetTour() {
+    clearInterval(this.levelT); this.levelT = null;
+    this.tour = { level: 1, elapsed: 0, pendingLevel: 0, finished: [] };
+    if (this.cfg.mode === 'tour') this.cfg.bb = levelBB(1);
+  }
+  levelMs() { return TOUR_LEVEL_MS || this.cfg.levelMin * 60 * 1000; }
+  /** 레벨 시계: 핸드가 도는 동안만 흐른다(대기·멈춤·종료 중엔 정지). 시간이 차면 다음 핸드부터 블라인드가 오른다 */
+  armLevelClock() {
+    if (this.cfg.mode !== 'tour' || this.levelT) return;
+    this.levelT = setInterval(() => {
+      const st = this.table.stage;
+      if (!this.playing || st === 'idle' || st === 'over' || st === 'paused') return;
+      this.tour.elapsed += 1000;
+      if (this.tour.elapsed >= this.levelMs()) {
+        this.tour.elapsed -= this.levelMs();
+        const next = Math.max(this.tour.level, this.tour.pendingLevel) + 1;
+        this.tour.pendingLevel = next;
+        if (st === 'showdown') { this.tour.level = next; this.cfg.bb = levelBB(next); }   // 핸드 사이면 바로 반영
+        this.broadcast({ t: 'event', name: 'level', data: { level: next, bb: levelBB(next), sb: Math.floor(levelBB(next) / 2), immediate: st === 'showdown' } });
+        this.dirty = true; this.broadcastState();
+      }
+    }, 1000);
+  }
+  /** 화면에 보낼 토너먼트 정보 */
+  tourInfo() {
+    if (this.cfg.mode !== 'tour') return null;
+    const cur = this.tour.level, pend = this.tour.pendingLevel > cur ? this.tour.pendingLevel : 0;
+    return { level: cur, bb: levelBB(cur), sb: Math.floor(levelBB(cur) / 2), nextLevel: pend, nextBB: pend ? levelBB(pend) : 0,
+      leftMs: Math.max(0, this.levelMs() - this.tour.elapsed), levelMin: this.cfg.levelMin, rebuyMax: this.cfg.rebuyMax, rebuyUntil: this.cfg.rebuyUntil, buyin: this.cfg.stack };
+  }
+  /** 순위표: 순수익(칩 − 바이인 총액) 기준. 탈락자는 탈락 순서대로 뒤에 */
+  ranking() {
+    const buy = this.cfg.stack;
+    const rows = this.table.players.map((p) => ({ name: p.name, bot: !!p.bot, stack: p.stack, rebuys: p.rebuys || 0, net: p.stack - buy * (1 + (p.rebuys || 0)), out: !!p.out, rank: p.rank || 0 }));
+    this.tour.finished.forEach((f) => { if (!rows.some((r) => r.name === f.name)) rows.push({ name: f.name, bot: f.bot, stack: 0, rebuys: f.rebuys, net: -buy * (1 + f.rebuys), out: true, rank: f.rank }); });
+    rows.sort((a, b) => (a.out !== b.out ? (a.out ? 1 : -1) : a.out ? a.rank - b.rank : b.net - a.net || b.stack - a.stack));
+    rows.forEach((r, i) => { r.place = i + 1; });
+    return rows;
   }
 
   onEvent(type, data) {
@@ -179,7 +249,7 @@ class Room {
     this.seats.forEach((s) => {
       if (s.bot || !s.player) return;
       const seat = this.table.players.indexOf(s.player);
-      if (seat >= 0) send(s.ws, { t: 'state', view: this.table.view(seat) });
+      if (seat >= 0) { const view = this.table.view(seat); view.tour = this.tourInfo(); send(s.ws, { t: 'state', view }); }
     });
   }
 
@@ -247,6 +317,8 @@ class Room {
         clearInterval(this.clock); this.clock = null;
         this.betweenHands();
         this.broadcastLobby();
+        // 토너먼트: 사람이 모두 탈락하면 봇끼리 돌리지 않고 그 자리에서 종료(순위표)
+        if (this.cfg.mode === 'tour' && !this.table.players.some((p) => p.human && !p.out)) { this.table.stage = 'over'; this.table.toAct = -1; this.table.auto = null; this.drive(); return; }
         this.table.startHand();   // 사람이 아무도 없으면(cfg.needHuman) 봇끼리 돌리지 않고 paused로 멈춘다
         this.drive();
       }
@@ -258,11 +330,13 @@ class Room {
     const T = this.table;
     const alive = T.players.filter((p) => !p.out);
     const winner = alive.length === 1 ? alive[0].name : '';
+    const ranking = this.cfg.mode === 'tour' ? this.ranking() : null;
+    clearInterval(this.levelT); this.levelT = null;
     this.playing = false;
     this.seats.forEach((s) => { s.player = null; });
     this.seats = this.seats.filter((s) => !s.leave);
     this.waiting = [];
-    this.seats.forEach((s) => { if (!s.bot) send(s.ws, { t: 'gameover', winner, lobby: this.lobbyMsg(s) }); });
+    this.seats.forEach((s) => { if (!s.bot) send(s.ws, { t: 'gameover', winner, mode: this.cfg.mode, ranking, lobby: this.lobbyMsg(s) }); });
   }
 
   /* ── 접속자 처리 ── */
@@ -282,6 +356,8 @@ class Room {
       if (!this.isHost(seat)) return send(seat.ws, { t: 'error', msg: '방장만 시작할 수 있습니다.' });
       if (!this.playing || (T.stage !== 'idle' && T.stage !== 'over')) return;
       if (T.alive().length < 2) return send(seat.ws, { t: 'error', msg: '2명 이상 있어야 시작합니다.' });
+      if (T.stage === 'over') { this.resetTour(); T.players.forEach((p) => { p.stack = this.cfg.stack; p.out = false; p.rebuys = 0; p.rank = 0; }); }
+      this.armLevelClock();
       T.startHand(); this.drive();
     } else if (m.t === 'addBot') {
       if (!this.isHost(seat)) return;
@@ -353,7 +429,7 @@ class Room {
     if (this.humans().every((s) => !s.online)) {
       // 사람이 아무도 없으면 한참 뒤 방 삭제 (그 전에 누구든 돌아오면 그대로 이어진다)
       clearTimeout(this.emptyT);
-      this.emptyT = setTimeout(() => { if (rooms.get(this.code) === this && this.humans().every((s) => !s.online)) { clearTimeout(this.timer); clearInterval(this.clock); rooms.delete(this.code); } }, EMPTY_ROOM_MS);
+      this.emptyT = setTimeout(() => { if (rooms.get(this.code) === this && this.humans().every((s) => !s.online)) { clearTimeout(this.timer); clearInterval(this.clock); clearInterval(this.levelT); rooms.delete(this.code); } }, EMPTY_ROOM_MS);
     }
   }
 }
@@ -405,7 +481,7 @@ wss.on('connection', (ws) => {
 setInterval(() => {
   wss.clients.forEach((ws) => { if (!ws.isAlive) return ws.terminate(); ws.isAlive = false; ws.ping(); });
   const now = Date.now();
-  rooms.forEach((room, code) => { if (now - room.lastActive > ROOM_IDLE_MS) { clearTimeout(room.timer); clearInterval(room.clock); rooms.delete(code); } });
+  rooms.forEach((room, code) => { if (now - room.lastActive > ROOM_IDLE_MS) { clearTimeout(room.timer); clearInterval(room.clock); clearInterval(room.levelT); rooms.delete(code); } });
 }, 30000);
 // Render 무료 서버는 HTTP 요청이 15분 없으면 잠든다(웹소켓만으로는 깨어 있지 않다).
 // 사람이 있는 방이 하나라도 있으면 자기 주소를 주기적으로 불러 게임 도중 잠들지 않게 한다.
