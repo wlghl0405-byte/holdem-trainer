@@ -524,6 +524,97 @@ header .tbtn{white-space:nowrap}
 .hint.bad{color:#E07B70}
 .seat.off .plate{opacity:.55}
 .numin[type=text]{text-align:left}
+
+/* ═══════════ v1.3 비주얼 개편: 깊은 펠트·금색 레일·칩 토큰·차례 카드·하단 독 ═══════════ */
+:root{--felt:#123B2C;--felt-hi:#1B5A42;--felt-lo:#0B2A1F;--rail:#2A1D14;--rail-hi:#4A3524;--gold:#D4AF37;--gold-2:#F1D479;--gold-soft:rgba(212,175,55,.16)}
+body{background:radial-gradient(ellipse 120% 80% at 50% -10%,#16261F 0%,#0B0E0D 55%,#070908 100%)}
+header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
+.stage{padding:16px 18px 0}
+/* 테이블: 나무 레일 안쪽에 얇은 금선, 펠트는 가운데가 밝고 가장자리로 어두워진다 */
+.felt{border:12px solid var(--rail);border-radius:47% / 54%;
+  background:radial-gradient(ellipse at 50% 40%,var(--felt-hi) 0%,var(--felt) 52%,var(--felt-lo) 100%);
+  box-shadow:inset 0 0 0 2.5px var(--gold),inset 0 0 0 4px rgba(0,0,0,.35),inset 0 0 90px rgba(0,0,0,.35),0 26px 70px rgba(0,0,0,.6),0 0 0 1px var(--rail-hi)}
+.felt::before{content:"";position:absolute;inset:14%;border-radius:inherit;border:1px solid rgba(255,255,255,.07);pointer-events:none}
+.potrow{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:5px 18px;display:inline-flex;margin-top:12px}
+.potline{letter-spacing:.14em;font-size:11px}
+.pot{font-size:22px;font-weight:900;color:var(--gold-2)}
+.board{gap:8px;min-height:80px}
+.card{border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.06)}
+.card.ph{background:rgba(0,0,0,.14);border:1.5px dashed rgba(255,255,255,.16)}
+.card.back{background:linear-gradient(135deg,#2B4B6B 0%,#1B3149 100%);border:2px solid #0F1E2E;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 3px,transparent 3px 8px),linear-gradient(135deg,#2B4B6B,#1B3149)}
+/* 좌석: 이름·칩을 한 알약에, 카드는 그 위 */
+.seat{width:138px}
+.felt.many .seat .card.sm{width:34px;height:48px}.felt.many .seat .card.sm .rk{font-size:12.5px}.felt.many .seat .card.sm .st{font-size:11.5px}
+.felt.many .seat .cards{min-height:48px}
+.seat .plate{background:linear-gradient(180deg,rgba(14,20,18,.94),rgba(8,12,11,.94));border:1px solid rgba(255,255,255,.12);border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.seat .plate .nm{padding:6px 10px 0;font-size:12.5px}
+.seat .plate .ch{padding:0 10px 6px;font-size:13.5px;color:var(--gold-2)}
+.seat .plate .ch::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:5px;vertical-align:1px;box-shadow:0 0 0 1.5px rgba(0,0,0,.4)}
+.seat .act{font-size:11px;padding:4px 8px;border-top:1px solid rgba(255,255,255,.1)}
+.seat.turn .plate{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft),0 0 24px rgba(212,175,55,.35)}
+.dbtn{background:linear-gradient(180deg,#FFF6D6,#E6CF85);color:#4A3510;border:1px solid #B8962E;width:20px;height:20px;font-size:11px}
+/* 칩 토큰: 좌석과 가운데 사이에 놓이는 베팅 금액 */
+.betchip{z-index:3;font-size:12px;font-weight:800;color:#F7E7AE;background:rgba(6,10,9,.9);border:1px solid rgba(241,212,121,.45);border-radius:999px;padding:3px 10px 3px 4px;gap:6px;box-shadow:0 3px 10px rgba(0,0,0,.5)}
+.betchip::before{width:16px;height:16px;background:radial-gradient(circle at 50% 50%,#FFF3C4 0 22%,#D4AF37 24% 52%,#8C6A15 54% 62%,#D4AF37 64% 100%);box-shadow:0 1px 3px rgba(0,0,0,.6),inset 0 0 0 1px rgba(0,0,0,.25)}
+.betchip.sb::before,.betchip.bb::before{background:radial-gradient(circle at 50% 50%,#FFE9E6 0 22%,#C0483C 24% 52%,#6E2419 54% 62%,#C0483C 64% 100%)}
+.betchip small{font-size:9.5px;font-weight:700;color:var(--ink-2);margin-right:-2px}
+/* 차례 카드: 테이블 오른쪽 위. 내 차례면 남은 시간과 진행 바 */
+.turncard{position:absolute;right:8px;top:6px;z-index:4;pointer-events:none;background:rgba(8,13,11,.9);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:8px 14px 9px;min-width:150px;text-align:left}
+.turncard .who{font-size:13px;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.turncard .who b{color:var(--ink)}
+.turncard .sec{font-size:30px;font-weight:900;color:var(--gold-2);line-height:1.05;font-variant-numeric:tabular-nums}
+.turncard .sec.hot{color:#F0A29A}
+.turncard .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.12);margin-top:6px;overflow:hidden}
+.turncard .bar i{display:block;height:100%;background:var(--gold);transition:width .9s linear}
+.turncard.me{border-color:rgba(212,175,55,.6);box-shadow:0 0 22px rgba(212,175,55,.25)}
+.turncard.wait .sec{display:none}.turncard.wait .bar{display:none}.turncard.wait{padding:9px 14px}
+/* 내 자리 + 액션: 한 덩어리 독 */
+.dock{width:100%;max-width:600px;margin:12px auto 0;background:linear-gradient(180deg,rgba(20,27,25,.96),rgba(14,19,18,.96));border:1px solid var(--line-2);border-radius:18px;padding:10px 14px 12px;box-shadow:0 12px 34px rgba(0,0,0,.45)}
+.hero{height:104px;padding:4px 6px;gap:18px;max-width:none}
+.hero .cards .card{width:64px;height:90px;border-radius:9px}
+.hero .cards .card .rk{font-size:24px}.hero .cards .card .st{font-size:22px}
+.hero .ch{font-size:24px;color:var(--gold-2)}
+.hero .nm{font-size:13.5px}
+.hero .made{font-size:12.5px}
+.hero.turn .cards .card{box-shadow:0 0 0 2px var(--gold),0 0 26px rgba(212,175,55,.5)}
+.actions{height:104px;padding:4px 0 2px}
+.actrow{max-width:none}
+.actrow .abtn{height:44px;border-radius:11px;font-size:14.5px}
+.abtn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)}
+.abtn.call{background:linear-gradient(180deg,#5A92E0,#3E74C4);border-color:transparent}
+.abtn.raise{background:linear-gradient(180deg,#E8C862,#C9A227);border-color:transparent;color:#20180A}
+.abtn.allin{border-color:rgba(192,72,60,.7);color:#F0A29A;background:rgba(192,72,60,.12)}
+.abtn.bet{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);flex-direction:column;gap:1px;padding:5px 4px;line-height:1.15}
+.abtn.bet small{font-size:11.5px;color:var(--gold-2)}
+.betbox .abtn{height:44px}
+.chatdock{max-width:600px}
+/* 결과 카드 */
+.rcard{border-radius:20px;border-color:rgba(212,175,55,.25)}
+/* 폰: 세로 트랙형 테이블, 모서리 카드 축소, 카드·독 재조정 */
+@media (max-width:1080px){
+  .stage{padding:6px 8px calc(6px + env(safe-area-inset-bottom,0))}
+  .felt{border-radius:34% / 22%;border-width:9px;box-shadow:inset 0 0 0 2px var(--gold),inset 0 0 0 3.5px rgba(0,0,0,.35),inset 0 0 70px rgba(0,0,0,.35),0 18px 44px rgba(0,0,0,.6),0 0 0 1px var(--rail-hi)}
+  .felt::before{inset:12% 10%}
+  .turncard{right:auto;left:2px;top:2px;padding:5px 9px 6px;min-width:0;border-radius:11px}
+  .turncard .who{font-size:11px}.turncard .sec{font-size:20px}.turncard .bar{margin-top:4px;height:3px}
+  .turncard.wait{padding:6px 9px}
+  .dock{margin:6px auto 0;padding:6px 10px 8px;border-radius:14px}
+  .hero{height:84px;gap:12px;padding:2px 2px}
+  .hero .cards .card{width:52px;height:72px;border-radius:7px}
+  .hero .cards .card .rk{font-size:19px}.hero .cards .card .st{font-size:18px}
+  .hero .ch{font-size:19px}
+  .actions{height:88px;min-height:0;padding:2px 0 2px}
+  .actrow .abtn{height:38px;font-size:13px}.betbox .abtn{height:38px}
+  .potrow{padding:3px 12px;margin-top:8px}
+}
+@media (max-width:720px){
+  .seat{width:72px}
+  .seat .plate{border-radius:10px}
+  .seat .plate .nm{padding:3px 6px 0;font-size:10.5px}.seat .plate .ch{padding:0 6px 4px;font-size:11px}
+  .seat .plate .ch::before{width:5px;height:5px;margin-right:3px}
+  .betchip{font-size:10px;padding:2px 7px 2px 3px;gap:4px}.betchip::before{width:11px;height:11px}
+  .board{gap:5px}
+}
 </style>
 </head>
 <body>
@@ -554,8 +645,10 @@ header .tbtn{white-space:nowrap}
           <div class="result" id="result"></div>
         </div>
         <div class="tourclock" id="tourClock" hidden></div>
+        <div class="turncard" id="turnCard" hidden></div>
       </div>
 
+      <div class="dock" id="dock">
       <div class="hero" id="hero">
         <div class="cards" id="heroCards"></div>
         <div class="info">
@@ -565,6 +658,7 @@ header .tbtn{white-space:nowrap}
         </div>
       </div>
       <div class="actions" id="actions"></div>
+      </div>
       <div class="chatdock" id="chatdock" hidden>
         <div class="cdlines" id="cdLines"></div>
         <div class="cdemotes" id="cdEmotes"></div>
@@ -1932,6 +2026,7 @@ function netHandle(m) {
     renderLobby();
   } else if (m.t === 'state') {
     MODE.net = true; G = m.view; NET.seated = true;
+    if (G.toAct !== 0) TURNCLK.sec = 0;
     if (m.view.cfg) { CFG.bb = m.view.cfg.bb; CFG.stack = m.view.cfg.stack; CFG.diff = m.view.cfg.diff || CFG.diff; if (m.view.cfg.speed) CFG.speed = m.view.cfg.speed; }
     if (m.view.result) RES = m.view.result;
     $('ov').classList.remove('on');
@@ -1971,6 +2066,7 @@ function netHandle(m) {
   } else if (m.t === 'countdown') {
     $('msg').textContent = m.sec > 0 ? '다음 핸드까지 ' + m.sec + '초' : '';
   } else if (m.t === 'turnclock') {
+    TURNCLK.sec = m.sec; TURNCLK.limit = CFG.turn; renderTurnCard();
     if (G.toAct === 0) $('msg').innerHTML = '<span class="pill' + (m.sec <= 3 ? ' hot' : '') + '">내 차례 · ' + m.sec + '초</span>';
   } else if (m.t === 'gameover') {
     NET.lobby = m.lobby || NET.lobby;
@@ -2215,14 +2311,38 @@ function render() {
     if (idx === G.btn && !p.out) { const b = document.createElement('div'); b.className = 'dbtn'; b.textContent = 'D'; d.appendChild(b); }
     if (p.away) { const aw = document.createElement('div'); aw.className = 'away'; aw.textContent = p.away === 'bot' ? 'AI 대리' : '자리 비움'; d.appendChild(aw); }
     if (p.sitOut) d.classList.add('folded');
-    // 베팅 금액은 플레이트의 액션 띠(벳 200 · 콜 200 · SB 50)에 이미 있으므로 따로 칩 배지를 두지 않는다 (보드와 겹침)
+    // 베팅 칩 토큰: 좌석에서 가운데 쪽으로 조금 들어온 자리. 보드 높이의 옆자리면 위·아래로 비켜 보드와 겹치지 않게 한다
+    if (p.bet > 0 && !p.out) {
+      const mob = window.innerWidth <= 720;
+      let cx = x + (50 - x) * 0.42, cy = y + (50 - y) * 0.42;
+      const bx = mob ? 22 : 30, by = mob ? 41 : 40;                     // 보드가 차지하는 영역(가로·세로 %)
+      if (cx > bx && cx < 100 - bx && cy > by && cy < 100 - by) cy = y < 50 ? by - 3 : 100 - by + 3;
+      const chip = document.createElement('div');
+      const kind = p.lastType === 'blind' ? (String(p.last).startsWith('SB') ? 'sb' : 'bb') : '';
+      chip.className = 'betchip' + (kind ? ' ' + kind : '') + (FX.bets[idx] !== p.bet ? ' pop' : '');
+      chip.style.left = cx + '%'; chip.style.top = cy + '%';
+      chip.innerHTML = (kind ? '<small>' + kind.toUpperCase() + '</small>' : '') + fmt(p.bet);
+      felt.appendChild(chip);
+    }
     FX.acts[idx] = p.last; FX.bets[idx] = p.bet;
     const bub = bubbleFor(p.name); if (bub) d.appendChild(bub);
     felt.appendChild(d);
   });
 
-  // 내 자리
+  // 내 베팅 칩: 테이블 아래쪽 가운데
   const me = G.players[0];
+  if (me.bet > 0 && !me.out) {
+    const chip = document.createElement('div');
+    const kind = me.lastType === 'blind' ? (String(me.last).startsWith('SB') ? 'sb' : 'bb') : '';
+    chip.className = 'betchip' + (kind ? ' ' + kind : '') + (FX.bets[0] !== me.bet ? ' pop' : '');
+    chip.style.left = '50%'; chip.style.top = '86%';
+    chip.innerHTML = (kind ? '<small>' + kind.toUpperCase() + '</small>' : '') + fmt(me.bet);
+    felt.appendChild(chip);
+  }
+  FX.bets[0] = me.bet;
+  renderTurnCard();
+
+  // 내 자리
   const hc = $('heroCards'); hc.innerHTML = '';
   if (me.hole.length && me.hole[0]) { const fresh = !FX.heroDealt; FX.heroDealt = true; me.hole.forEach((c) => hc.appendChild(cardEl(c, (fresh ? 'deal' : '') + (heroBest.has(HE.cardId(c)) ? ' best' : '')))); }
   else { hc.appendChild(ph()); hc.appendChild(ph()); }
@@ -2243,6 +2363,20 @@ function render() {
   renderLog();
 }
 const actClass = (p) => p.lastType || '';
+/** 차례 카드(테이블 오른쪽 위): 누구 차례인지, 내 차례면 남은 시간과 진행 바 */
+const TURNCLK = { sec: 0, limit: 0 };
+function renderTurnCard() {
+  const el = $('turnCard'); if (!el) return;
+  const live = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river';
+  if (!live || G.toAct < 0) { el.hidden = true; return; }
+  const mine = G.toAct === 0;
+  const limit = MODE.net ? CFG.turn : 0;
+  const showSec = mine && limit > 0 && TURNCLK.limit === limit && TURNCLK.sec > 0;
+  el.hidden = false;
+  el.className = 'turncard' + (mine ? ' me' : '') + (showSec ? '' : ' wait');
+  el.innerHTML = '<div class="who">' + (mine ? '<b>내 차례</b>' : '<b>' + esc(G.players[G.toAct].name) + '</b> 차례') + '</div>' +
+    (showSec ? '<div class="sec' + (TURNCLK.sec <= 3 ? ' hot' : '') + '">' + TURNCLK.sec + '</div><div class="bar"><i style="width:' + Math.round(100 * TURNCLK.sec / limit) + '%"></i></div>' : '');
+}
 /** 연출 상태: 같은 핸드 안에서 이미 보여준 카드·배지는 다시 애니메이션하지 않는다 */
 const FX = { hand: -1, boardN: 0, heroDealt: false, revealed: new Set(), bets: {}, acts: {}, pot: 0, winners: new Set(), winHand: -1 };
 /**
@@ -2253,16 +2387,24 @@ const SEAT_SLOTS = {   // 5명 이상: 각도표 (270 = 위, 180 = 왼쪽). 정�
   5: [205, 240, 270, 300, 335],
   6: [195, 228, 258, 282, 312, 345],
   7: [170, 200, 232, 270, 308, 340, 10],
-  8: [155, 190, 224, 254, 286, 316, 350, 25],
+  8: [146, 196, 228, 256, 284, 312, 344, 34],
+};
+// 폰(세로 트랙형 테이블) 5명 이상: 위 1~2명, 양옆 세로로 2~3명씩. [x%, y%]
+const SEAT_TRACK = {
+  5: [[12, 44], [12, 22], [50, 8], [88, 22], [88, 44]],
+  6: [[12, 46], [12, 24], [36, 8], [64, 8], [88, 24], [88, 46]],
+  7: [[13, 61], [11, 41], [13, 21], [50, 8], [87, 21], [89, 41], [87, 61]],
+  8: [[13, 61], [11, 41], [13, 21], [36, 8], [64, 8], [87, 21], [89, 41], [87, 61]],
 };
 function seatPos(k, n) {
   const mob = window.innerWidth <= 720;
+  if (mob && SEAT_TRACK[n]) return SEAT_TRACK[n][k];
   let deg;
   if (SEAT_SLOTS[n]) deg = SEAT_SLOTS[n][k];
   else { const START = mob ? 172 : 170, SPAN = mob ? 196 : 200; deg = START + ((k + 1) * SPAN) / (n + 1); }
   const wide = n >= 5;
   const RX = wide ? (mob ? 39 : 44) : (mob ? 40 : 45);
-  const RY = wide ? (mob ? 39 : 42) : (mob ? 34 : 40);
+  const RY = wide ? (mob ? 39 : (n >= 8 ? 44 : 42)) : (mob ? 34 : 40);
   const CY = wide ? (mob ? 47 : 50) : (mob ? 44 : 48);
   const t = deg * Math.PI / 180;
   return [50 + RX * Math.cos(t), CY + RY * Math.sin(t)];
