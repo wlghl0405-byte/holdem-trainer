@@ -169,17 +169,11 @@ class Room {
       if (this.cfg.mode === 'tour') {
         // 토너먼트: 리바인 횟수·마감 레벨 안이면 시작 칩으로 다시, 아니면 탈락(사람은 관전, 봇은 퇴장)
         p.rebuys = p.rebuys || 0;
-        const canRebuy = p.rebuys < this.cfg.rebuyMax && (!this.cfg.rebuyUntil || this.tour.level <= this.cfg.rebuyUntil);
-        if (canRebuy) {
-          p.rebuys++; p.stack = this.cfg.stack;
-          this.broadcast({ t: 'event', name: 'rebuy', data: { name: s.name, amount: this.cfg.stack, count: p.rebuys, max: this.cfg.rebuyMax, tour: true } });
-        } else {
-          const rank = T.players.filter((q) => q.stack > 0 && !q.out).length + 1;
-          p.out = true; p.rank = rank;
-          this.tour.finished.push({ name: s.name, bot: !!s.bot, rebuys: p.rebuys, stack: 0, rank });
-          this.broadcast({ t: 'event', name: 'elim', data: { name: s.name, rank, bot: !!s.bot } });
-          if (s.bot) { const pi = T.players.indexOf(p); if (pi >= 0) T.players.splice(pi, 1); this.seats.splice(i, 1); }
-        }
+        const rank = T.players.filter((q) => q.stack > 0 && !q.out).length + 1;
+        if (this.canRebuy(p)) {
+          if (s.bot) { p.rebuys++; p.stack = this.cfg.stack; this.broadcast({ t: 'event', name: 'rebuy', data: { name: s.name, amount: this.cfg.stack, count: p.rebuys, max: this.cfg.rebuyMax, tour: true } }); }
+          else { p.out = true; p.rank = rank; this.broadcast({ t: 'event', name: 'busted', data: { name: s.name, left: this.cfg.rebuyMax - p.rebuys, amount: this.cfg.stack } }); }   // 관전 상태에서 리바인 버튼으로 복귀
+        } else this.eliminate(s, p, rank);
         continue;
       }
       if (s.bot) { const pi = T.players.indexOf(p); if (pi >= 0) T.players.splice(pi, 1); this.seats.splice(i, 1); this.broadcast({ t: 'event', name: 'bust', data: { name: s.name, bot: true } }); continue; }
@@ -196,6 +190,38 @@ class Room {
     // 파산자는 제외 상태로 남고(관전), 방장이 다시 시작하면 복구된다
     // 토너먼트: 시간이 차서 올라간 레벨은 여기서(다음 핸드 전에) 블라인드에 반영한다
     if (this.cfg.mode === 'tour' && this.tour.pendingLevel > this.tour.level) { this.tour.level = this.tour.pendingLevel; this.cfg.bb = levelBB(this.tour.level); }
+    // 관전 중이던 사람이 마감 레벨을 넘기면 그때 탈락 확정
+    if (this.cfg.mode === 'tour') this.seats.forEach((s) => { const p = s.player; if (p && !s.bot && p.out && !this.tour.finished.some((f) => f.name === s.name) && !this.canRebuy(p)) this.eliminate(s, p, p.rank || T.players.filter((q) => q.stack > 0 && !q.out).length + 1); });
+  }
+  /** 토너먼트: 지금 리바인할 수 있나 (횟수 남음 + 마감 레벨 이내) */
+  canRebuy(p) { return this.cfg.mode === 'tour' && (p.rebuys || 0) < this.cfg.rebuyMax && (!this.cfg.rebuyUntil || this.tour.level <= this.cfg.rebuyUntil); }
+  /** 탈락 확정: 순위 기록, 사람은 관전 자리 유지, 봇은 퇴장 */
+  eliminate(s, p, rank) {
+    const T = this.table;
+    p.out = true; p.rank = rank;
+    this.tour.finished.push({ name: s.name, bot: !!s.bot, rebuys: p.rebuys || 0, stack: 0, rank });
+    this.broadcast({ t: 'event', name: 'elim', data: { name: s.name, rank, bot: !!s.bot } });
+    if (s.bot) { const pi = T.players.indexOf(p); if (pi >= 0) T.players.splice(pi, 1); const si = this.seats.indexOf(s); if (si >= 0) this.seats.splice(si, 1); }
+  }
+  /** 다음 핸드 시작. 토너먼트에서 칠 사람이 1명뿐인데 리바인할 수 있는 관전자가 있으면 끝내지 않고 기다린다(paused) */
+  dealOrWait() {
+    const T = this.table;
+    if (this.cfg.mode === 'tour' && T.players.filter((p) => !p.out && p.stack > 0).length < 2 && T.players.some((p) => p.human && p.out && this.canRebuy(p))) {
+      T.stage = 'paused'; T.toAct = -1; T.auto = null; T.board = []; T.players.forEach((p) => T.resetPlayer(p)); T.emit('state'); return;
+    }
+    T.startHand();
+  }
+  /** 관전 중인 사람의 리바인 요청: 시작 칩으로 다음 핸드부터 복귀. 멈춰 있던 게임이면 재개 */
+  rebuy(seat) {
+    const T = this.table, p = seat.player;
+    if (!this.playing || !p || seat.bot) return false;
+    if (!p.out) return send(seat.ws, { t: 'error', msg: '참가 중에는 리바인할 수 없습니다.' });
+    if (!this.canRebuy(p)) return send(seat.ws, { t: 'error', msg: '리바인 횟수를 다 썼거나 마감 레벨이 지났습니다.' });
+    p.rebuys = (p.rebuys || 0) + 1; p.stack = this.cfg.stack; p.out = false; p.rank = 0; p.folded = true; p.sitOut = seat.away === 'fold';
+    this.broadcast({ t: 'event', name: 'rebuy', data: { name: seat.name, amount: this.cfg.stack, count: p.rebuys, max: this.cfg.rebuyMax, tour: true } });
+    this.dirty = true; this.broadcastLobby();
+    if ((T.stage === 'paused' || T.stage === 'over') && this.canDeal()) { T.startHand(); this.drive(); } else this.broadcastState();
+    return true;
   }
 
   /* ── 토너먼트 ── */
@@ -271,7 +297,7 @@ class Room {
     }
     else if (p === 'showdown') this.armNextHand();
     else if (p === 'over') this.gameOver();
-    else if (p === 'paused') this.broadcast({ t: 'paused', names: T.players.filter((q) => q.sitOut && !q.out).map((q) => q.name) });
+    else if (p === 'paused') this.broadcast({ t: 'paused', names: T.players.filter((q) => q.sitOut && !q.out).map((q) => q.name), waitingRebuy: T.players.filter((q) => q.human && q.out && this.canRebuy(q)).map((q) => q.name) });
   }
 
   /** 차례인 사람을 대신해 체크 또는 폴드 */
@@ -318,8 +344,8 @@ class Room {
         this.betweenHands();
         this.broadcastLobby();
         // 토너먼트: 사람이 모두 탈락하면 봇끼리 돌리지 않고 그 자리에서 종료(순위표)
-        if (this.cfg.mode === 'tour' && !this.table.players.some((p) => p.human && !p.out)) { this.table.stage = 'over'; this.table.toAct = -1; this.table.auto = null; this.drive(); return; }
-        this.table.startHand();   // 사람이 아무도 없으면(cfg.needHuman) 봇끼리 돌리지 않고 paused로 멈춘다
+        if (this.cfg.mode === 'tour' && !this.table.players.some((p) => p.human && (!p.out || this.canRebuy(p)))) { this.table.stage = 'over'; this.table.toAct = -1; this.table.auto = null; this.drive(); return; }
+        this.dealOrWait();        // 사람이 아무도 없으면(cfg.needHuman) 봇끼리 돌리지 않고 paused로 멈춘다
         this.drive();
       }
     }, 1000);
@@ -386,6 +412,8 @@ class Room {
         else if (T.toAct >= 0 && T.players[T.toAct] === seat.player) this.drive();   // 지금 내 차례면 즉시 처리 방식 전환
         else this.broadcastState();
       }
+    } else if (m.t === 'rebuy') {
+      this.rebuy(seat);
     } else if (m.t === 'chat') {
       const text = String(m.text || '').trim().slice(0, 80);
       const now = Date.now();

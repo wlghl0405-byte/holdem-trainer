@@ -231,8 +231,17 @@ function checkView(v, base, label) {
   { const t = Date.now(); while (Date.now() - t < 40000 && !(qroom.table.stage === 'preflop' && qroom.cfg.bb >= 400)) await sleep(50); }
   ok(qroom.cfg.bb >= 400 && qroom.table.handNo >= 2, '올라간 블라인드는 다음 핸드부터 적용 (bb=' + qroom.cfg.bb + ', 핸드 ' + qroom.table.handNo + ')');
   ok(await qShowdown(), '토너먼트 핸드 쇼다운 도달');
-  qroom.table.players[0].stack = 0; await qEvent('rebuy', 1);
-  { const r = Q.events.find((e) => e.name === 'rebuy'); ok(r && r.data.amount === 20000 && r.data.count === 1 && r.data.max === 1 && r.data.tour, '리바인은 시작 칩 그대로 (1/1회)'); }
+  qroom.table.players[0].stack = 0; await qEvent('busted', 1);
+  { const b = Q.events.find((e) => e.name === 'busted'); ok(b && b.data.left === 1 && b.data.amount === 20000, '파산하면 자동 리바인 대신 관전 + 리바인 안내 (남은 1회)'); }
+  { const t0 = Date.now(); while (Date.now() - t0 < 10000 && !(Q.lastView && Q.lastView.players[0].out && qroom.table.stage === 'paused')) await sleep(50); }
+  ok(Q.lastView && Q.lastView.players[0].out && qroom.table.stage === 'paused', '사람이 관전 중이면 봇끼리 돌리지 않고 멈춤 (stage=' + qroom.table.stage + ')');
+  ok(!Q.gameover, '리바인할 수 있는 동안은 게임이 끝나지 않음');
+  Q.send({ t: 'rebuy' }); await qEvent('rebuy', 1);
+  { const r = Q.events.find((e) => e.name === 'rebuy'); ok(r && r.data.amount === 20000 && r.data.count === 1 && r.data.max === 1 && r.data.tour, '리바인 버튼 → 시작 칩으로 복귀 (1/1회)'); }
+  { const t0 = Date.now(); while (Date.now() - t0 < 10000 && !(qroom.table.stage !== 'paused' && !qroom.table.players[0].out)) await sleep(50); }
+  ok(!qroom.table.players[0].out && qroom.table.stage !== 'paused', '리바인하면 멈춤 해제·다음 핸드 재개');
+  Q.send({ t: 'rebuy' }); await sleep(200);
+  ok(Q.errors.some((e) => e.includes('리바인')), '참가 중이거나 횟수가 없으면 리바인 거부');
   ok(await qShowdown(), '리바인 뒤 다음 핸드 쇼다운 도달');
   qroom.table.players[0].stack = 0; await qEvent('elim', 1);
   { const e = Q.events.find((e) => e.name === 'elim'); ok(e && e.data.name === '토너' && e.data.rank === 3, '리바인 횟수를 다 쓰면 탈락 (3위)'); }

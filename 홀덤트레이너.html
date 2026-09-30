@@ -1743,7 +1743,7 @@ function showResult(res) {
   flyChips(Array.from(FX.winners));
   // 온라인에서 칩이 0이 되면: 파산했다는 것과 얼마로 다시 시작하는지 결과 카드에서 바로 알려준다
   const bust = MODE.net && me.stack <= 0 && !iWon && TOUR.info
-    ? '<div class="rbust"><div class="rbtitle">' + (canRebuyTour(me) ? '파산' : '탈락') + '</div><div class="rbsub">' + (canRebuyTour(me) ? '다음 핸드에 <b>리바인 ' + fmt(TOUR.info.buyin) + '</b>으로 다시 시작합니다 (' + ((me.rebuys || 0) + 1) + '/' + TOUR.info.rebuyMax + '회)' : '리바인을 다 썼거나 마감이 지났습니다. 관전 모드로 전환됩니다') + '</div></div>'
+    ? '<div class="rbust"><div class="rbtitle">' + (canRebuyTour(me) ? '파산' : '탈락') + '</div><div class="rbsub">' + (canRebuyTour(me) ? '<b>리바인 ' + fmt(TOUR.info.buyin) + '</b> 가능 (' + (TOUR.info.rebuyMax - (me.rebuys || 0)) + '회 남음). 아래 리바인 버튼으로 다시 참가하거나 그대로 관전합니다' : '리바인을 다 썼거나 마감이 지났습니다. 관전 모드로 전환됩니다') + '</div></div>'
     : MODE.net && me.stack <= 0 && !iWon
     ? '<div class="rbust"><div class="rbtitle">파산</div><div class="rbsub">칩을 모두 잃었습니다. 다음 핸드에 <b>시작 칩의 ' + rebuyPct(me) + '%</b> = <b>' + fmt(rebuyAmt(me)) + '</b>으로 다시 시작합니다' + ((me.rebuys || 0) > 0 ? ' <span class="rbn">' + ((me.rebuys || 0) + 1) + '번째 부활</span>' : '') + '</div></div>'
     : '';
@@ -1944,6 +1944,10 @@ function netHandle(m) {
       announce('<span class="who">블라인드 업</span>Lv' + m.data.level + ' ' + fmt(m.data.sb) + ' / ' + fmt(m.data.bb) + '<small>' + (m.data.immediate ? '다음 핸드부터' : '이번 핸드 끝나고') + '</small>', 'level', 4000);
       chatPush('알림', '블라인드 업 · Lv' + m.data.level + ' ' + fmt(m.data.sb) + '/' + fmt(m.data.bb), false);
     }
+    else if (m.name === 'busted') {
+      if (m.data.name === NET.name) announce('<span class="who">파산</span>리바인 ' + m.data.left + '회 남음 <small>아래 버튼으로 다시 참가</small>', 'rebuy', 4000);
+      else chatPush('알림', m.data.name + ' 파산 · 리바인 대기', false);
+    }
     else if (m.name === 'elim') {
       const mine = m.data.name === NET.name;
       if (mine) announce('<span class="who">탈락</span>' + m.data.rank + '위 <small>관전 모드</small>', 'rebuy', 4000);
@@ -1951,7 +1955,7 @@ function netHandle(m) {
       chatPush('알림', m.data.name + ' 탈락 (' + m.data.rank + '위)', false);
     }
   } else if (m.t === 'paused') {
-    $('msg').innerHTML = '<b>잠시 멈춤</b><br>' + esc((m.names || []).join(', ')) + ' 자리 비움';
+    $('msg').innerHTML = '<b>잠시 멈춤</b><br>' + esc([...(m.names || []).map((n) => n + ' 자리 비움'), ...(m.waitingRebuy || []).map((n) => n + ' 리바인 대기')].join(' · '));
   } else if (m.t === 'countdown') {
     $('msg').textContent = m.sec > 0 ? '다음 핸드까지 ' + m.sec + '초' : '';
   } else if (m.t === 'turnclock') {
@@ -1996,7 +2000,8 @@ const mmss = (ms) => { const t = Math.max(0, Math.round(ms / 1000)); return Math
 function updateBlindHeader() {
   const el = $('hBlind');
   if (!MODE.net || !TOUR.info) { el.textContent = fmt(SB()) + ' / ' + fmt(CFG.bb); return; }
-  const t = TOUR.info, left = t.leftMs - (Date.now() - TOUR.at);
+  const t = TOUR.info, running = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river' || G.stage === 'showdown';
+  const left = running ? t.leftMs - (Date.now() - TOUR.at) : t.leftMs;   // 서버 시계는 핸드가 도는 동안만 흐른다
   el.innerHTML = 'Lv' + t.level + ' ' + fmt(t.sb) + ' / ' + fmt(t.bb) + '<small>' + (t.nextLevel ? '다음 핸드 ' + fmt(Math.floor(t.nextBB / 2)) + '/' + fmt(t.nextBB) : mmss(left)) + '</small>';
 }
 if (typeof setInterval === 'function') setInterval(() => { if (MODE.net && TOUR.info) updateBlindHeader(); }, 1000);
@@ -2271,7 +2276,7 @@ function flyChips(viewSeats) {
 const rebuyPct = (p) => ((p.rebuys || 0) === 0 ? 50 : 10);
 /** 토너먼트: 지금 파산하면 리바인 가능한지 (서버 규칙과 같다: 횟수 남음 + 마감 레벨 이내) */
 const canRebuyTour = (p) => { const t = TOUR.info; return !!t && (p.rebuys || 0) < t.rebuyMax && (!t.rebuyUntil || t.level <= t.rebuyUntil); };
-const bustLine = (p) => (!TOUR.info ? '다음 핸드 ' + fmt(rebuyAmt(p)) + '으로 재시작 (' + rebuyPct(p) + '%)' : canRebuyTour(p) ? '다음 핸드 리바인 ' + fmt(TOUR.info.buyin) + ' (' + ((p.rebuys || 0) + 1) + '/' + TOUR.info.rebuyMax + '회)' : '리바인 불가 · 탈락');
+const bustLine = (p) => (!TOUR.info ? '다음 핸드 ' + fmt(rebuyAmt(p)) + '으로 재시작 (' + rebuyPct(p) + '%)' : canRebuyTour(p) ? '리바인 ' + fmt(TOUR.info.buyin) + ' 가능 (' + (TOUR.info.rebuyMax - (p.rebuys || 0)) + '회 남음)' : '리바인 불가 · 탈락');
 const netProfit = (p) => (TOUR.info ? p.stack - TOUR.info.buyin * (1 + (p.rebuys || 0)) : 0);
 const rebuyAmt = (p) => Math.max(CFG.bb, Math.round(CFG.stack * rebuyPct(p) / 100));
 /** 누군가 부활했다: 나면 크게 알리고 칩이 날아온다, 남이면 좌석 말풍선 */
@@ -2310,10 +2315,25 @@ function renderActions() {
     const b = document.createElement('button'); b.className = 'abtn raise'; b.textContent = '돌아오기'; b.onclick = () => setAway(''); row.appendChild(b);
     return;
   }
+  // 토너먼트에서 파산해 관전 중이면 (멈춤 상태여도) 리바인 버튼을 먼저 보여준다
+  if (MODE.net && me.out && TOUR.info && G.stage !== 'idle' && G.stage !== 'over') {
+    if (canRebuyTour(me)) {
+      $('msg').innerHTML = '<b>관전 중</b><br>리바인 ' + fmt(TOUR.info.buyin) + ' · ' + (TOUR.info.rebuyMax - (me.rebuys || 0)) + '회 남음';
+      const row = document.createElement('div'); row.className = 'actrow main single'; a.appendChild(row);
+      const b = document.createElement('button'); b.className = 'abtn raise'; b.textContent = '리바인 ' + fmt(TOUR.info.buyin); b.onclick = () => { $('result').classList.remove('on'); netSend({ t: 'rebuy' }); }; row.appendChild(b);
+    } else $('msg').innerHTML = '<b>탈락</b><br>관전 중';
+    return;
+  }
   if (G.stage === 'paused') { $('msg').innerHTML = '<b>잠시 멈춤</b><br>칠 사람이 1명뿐'; return; }
   if (G.stage === 'idle' || G.stage === 'over') return showStartButton();
   if (G.toAct !== 0 || G.stage === 'showdown' || me.folded || me.out) {
-    if (MODE.net && me.out && TOUR.info) $('msg').innerHTML = '<b>탈락</b><br>관전 중';
+    if (MODE.net && me.out && TOUR.info) {
+      if (canRebuyTour(me)) {
+        $('msg').innerHTML = '<b>관전 중</b><br>리바인 ' + fmt(TOUR.info.buyin) + ' · ' + (TOUR.info.rebuyMax - (me.rebuys || 0)) + '회 남음';
+        const row = document.createElement('div'); row.className = 'actrow main single'; a.appendChild(row);
+        const b = document.createElement('button'); b.className = 'abtn raise'; b.textContent = '리바인 ' + fmt(TOUR.info.buyin); b.onclick = () => { $('result').classList.remove('on'); netSend({ t: 'rebuy' }); }; row.appendChild(b);
+      } else $('msg').innerHTML = '<b>탈락</b><br>관전 중';
+    }
     else if (MODE.net && (me.out || me.stack <= 0)) $('msg').innerHTML = '<b>파산</b><br>' + bustLine(me);
     else if (G.stage === 'showdown') { if (REVEAL.on) $('msg').textContent = '쇼다운 · 패 공개 중'; }
     else $('msg').textContent = G.toAct >= 0 ? G.players[G.toAct].name + ' 차례' : (MODE.net && G.stage === 'idle' ? '방장이 시작하면 딜' : '');
