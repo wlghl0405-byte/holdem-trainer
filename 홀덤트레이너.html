@@ -2011,7 +2011,7 @@ const TOUR = { info: null, at: 0 };
 const mmss = (ms) => { const t = Math.max(0, Math.round(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
 function updateBlindHeader() {
   const el = $('hBlind'), tc = $('tourClock');
-  document.body.classList.toggle('tour', !!(MODE.net && TOUR.info));
+  if (document.body && document.body.classList) document.body.classList.toggle('tour', !!(MODE.net && TOUR.info));
   if (!MODE.net || !TOUR.info) { el.textContent = fmt(SB()) + ' / ' + fmt(CFG.bb); if (tc) tc.hidden = true; return; }
   const t = TOUR.info, running = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river' || G.stage === 'showdown';
   const left = running ? t.leftMs - (Date.now() - TOUR.at) : t.leftMs;   // 서버 시계는 핸드가 도는 동안만 흐른다
