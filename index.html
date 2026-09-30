@@ -62,6 +62,12 @@ aside{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;
 }
 .center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;width:82%;z-index:3}
 .potline{font-size:12px;color:rgba(255,255,255,.5);font-weight:650;letter-spacing:.04em}
+/* 토너먼트 레벨 시계: 펠트 왼쪽 위 모서리(타원 바깥 여백)에 항상 표시 */
+.tourclock{position:absolute;left:6px;top:6px;z-index:4;pointer-events:none;background:rgba(8,13,11,.86);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:6px 10px 5px;line-height:1.2;text-align:left;min-width:92px}
+.tourclock .lv{font-size:11px;font-weight:700;color:var(--ink-2);letter-spacing:.02em;white-space:nowrap}
+.tourclock .tm{font-size:19px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;margin-top:1px}
+.tourclock .tm.hot{color:#F0A29A}
+.tourclock .nx{font-size:10.5px;color:#BFF0D6;font-weight:700;white-space:nowrap;margin-top:1px}
 .pot{font-size:22px;font-weight:800;color:var(--gold)}
 .potrow{display:flex;align-items:baseline;justify-content:center;gap:8px;margin-top:10px}
 .potrow .stagetag{margin:0 0 0 6px;padding-left:12px;border-left:1px solid rgba(255,255,255,.18)}
@@ -358,6 +364,10 @@ header .tbtn{white-space:nowrap}
   .hstat span:nth-child(2){display:none}
   .hstat span:first-child{display:none}
   .hstat{margin-left:auto;gap:6px}
+  /* 토너먼트: 폰에서는 펠트 위 시계 대신 헤더에 레벨·남은 시간을 보여준다 (좌석과 겹치지 않게) */
+  body.tour .hstat span:nth-child(2){display:inline}
+  body.tour .hstat span:nth-child(3){display:none}
+  body.tour .tourclock{display:none}
   header .tbtn{padding:6px 8px;font-size:11.5px}
   .tbtn{padding:6px 10px;font-size:11.5px}
   /* 테이블이 남는 공간을 전부 차지하고, 그 아래 요소는 고정 높이 */
@@ -372,6 +382,7 @@ header .tbtn{white-space:nowrap}
 /* 폰 세로: 좌석·카드·액션을 화면에 맞게 압축 */
 @media (max-width:720px){
   .center{width:78%;top:50%}
+  .tourclock{left:4px;top:4px;padding:5px 8px 4px;min-width:80px}.tourclock .tm{font-size:16px}.tourclock .lv{font-size:10px}
   .felt.many .board .card{width:33px;height:46px}
   .felt.many .board .card .rk{font-size:12.5px}.felt.many .board .card .st{font-size:11.5px}
   .felt.many .center{width:72%}
@@ -542,6 +553,7 @@ header .tbtn{white-space:nowrap}
           </div>
           <div class="ann" id="ann"></div>
           <div class="result" id="result"></div>
+          <div class="tourclock" id="tourClock" hidden></div>
         </div>
       </div>
 
@@ -1158,11 +1170,17 @@ function netHandle(m) {
 const TOUR = { info: null, at: 0 };
 const mmss = (ms) => { const t = Math.max(0, Math.round(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
 function updateBlindHeader() {
-  const el = $('hBlind');
-  if (!MODE.net || !TOUR.info) { el.textContent = fmt(SB()) + ' / ' + fmt(CFG.bb); return; }
+  const el = $('hBlind'), tc = $('tourClock');
+  document.body.classList.toggle('tour', !!(MODE.net && TOUR.info));
+  if (!MODE.net || !TOUR.info) { el.textContent = fmt(SB()) + ' / ' + fmt(CFG.bb); if (tc) tc.hidden = true; return; }
   const t = TOUR.info, running = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river' || G.stage === 'showdown';
   const left = running ? t.leftMs - (Date.now() - TOUR.at) : t.leftMs;   // 서버 시계는 핸드가 도는 동안만 흐른다
   el.innerHTML = 'Lv' + t.level + ' ' + fmt(t.sb) + ' / ' + fmt(t.bb) + '<small>' + (t.nextLevel ? '다음 핸드 ' + fmt(Math.floor(t.nextBB / 2)) + '/' + fmt(t.nextBB) : mmss(left)) + '</small>';
+  if (tc) {   // 펠트 위 상시 시계 (폰에서는 헤더에 블라인드가 없어 이것만 보인다)
+    tc.hidden = false;
+    tc.innerHTML = '<div class="lv">Lv' + t.level + ' · ' + fmt(t.sb) + '/' + fmt(t.bb) + '</div>' +
+      (t.nextLevel ? '<div class="tm hot">0:00</div><div class="nx">다음 핸드 ' + fmt(Math.floor(t.nextBB / 2)) + '/' + fmt(t.nextBB) + '</div>' : '<div class="tm' + (left <= 30000 ? ' hot' : '') + '">' + mmss(left) + '</div>');
+  }
 }
 if (typeof setInterval === 'function') setInterval(() => { if (MODE.net && TOUR.info) updateBlindHeader(); }, 1000);
 /** 토너먼트 종료 순위표 (순수익 기준). 결과 카드 자리에 띄운다 */
