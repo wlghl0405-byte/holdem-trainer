@@ -1277,12 +1277,14 @@ function renderCoachLine(v) {
   const el = $('coachLine'); if (!el) return;
   const show = !MODE.net && CFG.coach;
   el.hidden = !show; if (!show) return;
+  if (!v && COACH.lineUntil && Date.now() < COACH.lineUntil) return;   // 방금 뜬 피드백은 6초 동안 유지(렌더가 덮어쓰지 않게)
   clearTimeout(COACH.lineT);
   if (v) {
+    COACH.lineUntil = Date.now() + 6000;
     const g = grade(v.score);
     el.className = 'coachline ' + g[0];
     el.innerHTML = '<b>' + g[1] + '</b> ' + esc(v.mine) + (v.score < 90 ? ' · 기준은 <b>' + esc(v.best) + '</b>' : '') + '<small>' + esc(v.why) + '</small>';
-    COACH.lineT = setTimeout(() => renderCoachLine(), 6000);
+    COACH.lineT = setTimeout(() => { COACH.lineUntil = 0; renderCoachLine(); }, 6000);
   } else {
     el.className = 'coachline';
     el.innerHTML = COACH.total ? '<b>코치</b> 기준 일치 ' + COACH.acc() + '% <small>' + COACH.total + '개 결정 · 어드바이저 버튼에서 기록</small>' : '<b>코치</b> 내 결정마다 GTO 기준과 비교합니다';
@@ -1932,7 +1934,7 @@ function render() {
   $('hero').querySelectorAll('.bubble').forEach((b) => b.remove());
   { const bub = bubbleFor(me.name); if (bub) { bub.classList.add('mine'); felt.appendChild(bub); } }   // 내 말풍선은 펠트 아래 가운데 (독의 카드·버튼을 안 가린다)
   const dealerMe = G.btn === 0 ? ' · 딜러' : '';
-  $('heroName').innerHTML = avatarHtml(MODE.net ? me.name : '나') + (MODE.net ? esc(me.name) : '나') + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '') + (MODE.net && me.rebuys ? (TOUR.info ? ' · 리바인 ' + me.rebuys + '회' : ' · 부활 ' + me.rebuys + '회') : '') + (MODE.net && TOUR.info ? ' · 순수익 ' + (netProfit(me) >= 0 ? '+' : '') + fmt(netProfit(me)) : '');
+  $('heroName').innerHTML = avatarHtml(MODE.net ? me.name : '나') + (MODE.net ? esc(me.name) : '나') + dealerMe + (MODE.net && me.rebuys ? (TOUR.info ? ' · 리바인 ' + me.rebuys + '회' : ' · 부활 ' + me.rebuys + '회') : '') + (MODE.net && TOUR.info ? ' · 순수익 ' + (netProfit(me) >= 0 ? '+' : '') + fmt(netProfit(me)) : '');
   if (me.hole.length && !me.out && me.hole[0]) {
     const bf = HE.bestFive(me.hole.concat(REVEAL.on ? G.board.slice(0, nBoard) : G.board));
     $('heroMade').innerHTML = '현재 <b>' + HE.handName(bf.score) + '</b>';
@@ -2001,8 +2003,8 @@ const SEAT_SLOTS = {   // 5명 이상: 각도표 (270 = 위, 180 = 왼쪽). 정�
 };
 // 폰(세로 트랙형 테이블) 5명 이상: 위 1~2명, 양옆 세로로 2~3명씩. [x%, y%]
 const SEAT_TRACK = {
-  5: [[10, 64], [10, 30], [50, 14], [90, 30], [90, 64]],
-  6: [[10, 66], [10, 30], [34, 14], [66, 14], [90, 30], [90, 66]],
+  5: [[11, 72], [10, 34], [50, 14], [90, 34], [89, 72]],   // 아래까지 넓게 펴서 펠트 하단 여백을 쓴다
+  6: [[11, 72], [10, 34], [34, 14], [66, 14], [90, 34], [89, 72]],
   7: [[11, 72], [9, 48], [11, 24], [50, 14], [89, 24], [91, 48], [89, 72]],
   8: [[11, 72], [9, 48], [11, 24], [34, 14], [66, 14], [89, 24], [91, 48], [89, 72]],
 };
