@@ -485,7 +485,7 @@ header .tbtn{white-space:nowrap}
 .cdemotes .emote:hover{background:rgba(201,162,39,.16)}
 .cdemotes .emote:active{transform:scale(.9)}
 .cdrow .numin{flex:1;margin:0;padding:7px 10px;font-size:13px;text-align:left;min-width:0}
-@media (max-width:1080px){ .cdemotes{gap:3px} .cdemotes .emote{font-size:18px;padding:6px 0;border-radius:8px} .cdlines{height:38px} }
+@media (max-width:1080px){ .cdemotes{gap:3px} .cdemotes .emote{font-size:18px;padding:6px 0;border-radius:8px} .cdlines{height:40px} }
 @media (max-width:400px){ .cdemotes{gap:2px} .cdemotes .emote{font-size:16px;padding:5px 0} }
 /* ── 온라인 설정·로비 ── */
 .mtab{display:flex;gap:6px;margin:0 0 12px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:4px}
@@ -632,7 +632,7 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
   .hero .cards .card{width:42px;height:58px}.hero .cards .card .rk{font-size:16px}.hero .cards .card .st{font-size:15px}
   .hero .ch{font-size:17px}
   .actions{height:78px;padding:2px 0 0;gap:5px}.actrow .abtn{height:34px}.betbox .abtn{height:34px}
-  .chatdock{padding-bottom:4px}.cdlines{height:22px;line-height:18px;padding-bottom:2px}
+  .chatdock{padding-bottom:4px}.cdlines{height:40px;line-height:18px;padding:0 4px 4px}
   .cdemotes .emote{font-size:15px;padding:3px 0}
   .cdrow{margin-top:3px}.cdrow .numin{padding:5px 9px;font-size:12px}
   .felt.many .center{top:46%}
@@ -2262,7 +2262,7 @@ function renderChat() {
   el.innerHTML = CHAT.lines.slice(-60).map((l) => '<div class="cl' + (l.mine ? ' me' : '') + '"><b>' + esc(l.name) + '</b> ' + esc(l.text) + '</div>').join('');
   el.scrollTop = el.scrollHeight;
   const cd = $('cdLines');
-  if (cd) cd.innerHTML = CHAT.lines.slice(-2).map((l) => '<div class="cl' + (l.mine ? ' me' : '') + '"><b>' + esc(l.name) + '</b> ' + esc(l.text) + '</div>').join('');
+  if (cd) { const two = CHAT.lines.slice(-2); while (two.length < 2) two.unshift(null); cd.innerHTML = two.map((l) => l ? '<div class="cl' + (l.mine ? ' me' : '') + '"><b>' + esc(l.name) + '</b> ' + esc(l.text) + '</div>' : '<div class="cl">&nbsp;</div>').join(''); }
 }
 function chatSend(text) {
   text = String(text || '').trim().slice(0, 80);
