@@ -661,6 +661,12 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
 @media (max-width:1080px){.actions{height:56px;padding:4px 0 2px}.actions .abtn{height:46px;font-size:12.5px;max-width:none}.actions .abtn small{font-size:10.5px}}
 @media (max-width:720px){.actions{gap:4px;height:50px;padding:3px 0 0}.actions .abtn{height:44px;font-size:12px;padding:2px 1px;border-radius:9px}.actions .abtn small{font-size:10px}}
 /* ═══════════ v1.4 폰 레이아웃: 가림 최소화·테이블 축소·독 활용 ═══════════ */
+/* 상황 팝업(HEADS-UP · FAMILY POT) */
+.ann.big{flex-direction:column;gap:2px;padding:12px 28px 11px;border-radius:16px;border-color:var(--gold);background:rgba(6,10,9,.86);box-shadow:0 0 44px rgba(212,175,55,.5),0 10px 30px rgba(0,0,0,.6)}
+.ann.big .hu{font-size:24px;font-weight:900;letter-spacing:.22em;color:#F3D77A;text-shadow:0 0 18px rgba(243,215,122,.6)}
+.ann.big small{font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--ink)}
+.ann.on.headsup{animation:huPop .5s cubic-bezier(.2,.9,.3,1.3) both}
+@keyframes huPop{0%{transform:translate(-50%,-50%) scale(.6);opacity:0}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
 /* 테이블 아래 액션 티커(폰): 팝업 배너 대신 최근 액션 두 개를 한 줄로 */
 .ticker{display:none}
 /* 독 상단 남은 시간 바 */
@@ -676,7 +682,14 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
 /* 내 말풍선: 펠트 아래 가운데 (독을 가리지 않는다) */
 .felt .bubble.mine{left:50%;bottom:10px;top:auto;transform:translateX(-50%);z-index:6;max-width:70%}
 .felt .bubble.mine::after{display:none}
-/* 폰 상대 이모지 풍선: 플레이트 옆 안쪽(왼쪽 좌석은 오른쪽, 오른쪽 좌석은 왼쪽). 글 채팅은 풍선 없이 채팅 독으로만 */
+/* 폰 상대 글 말풍선: 자기 좌석 카드 뒷면 자리(좌석 맨 위) 한 줄. 가장자리 좌석은 안쪽으로만 펼쳐 보드를 안 덮는다 */
+.seat .bubble.txt{top:3px;bottom:auto;font-size:10.5px;padding:3px 7px;line-height:1.3;max-width:96px}
+.seat .bubble.txt.axc{left:50%;transform:translateX(-50%)}
+.seat .bubble.txt.ax0{left:0;transform:none;max-width:80px}
+.seat .bubble.txt.ax1{left:auto;right:0;transform:none;max-width:80px}
+.seat .bubble.txt.wide{max-width:150px}
+.seat .bubble.txt::after{display:none}
+/* 폰 상대 이모지 풍선: 플레이트 옆 안쪽(왼쪽 좌석은 오른쪽, 오른쪽 좌석은 왼쪽) */
 .seat .bubble.es{top:63%;bottom:auto;transform:translateY(-50%);font-size:17px;padding:2px 6px;border-radius:12px;max-width:none}
 .seat .bubble.es.ax0{left:calc(100% + 2px);right:auto}
 .seat .bubble.es.ax1{left:auto;right:calc(100% + 2px)}
@@ -705,6 +718,7 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
   .hero .made{font-size:12px}
   .actions{height:58px;padding:4px 0 0;gap:5px}.actions .abtn{height:50px;font-size:12.5px}.actions .abtn small{font-size:10.5px}
   /* 결과 카드: 보드가 보이게 펠트 아래쪽에 작게 */
+  .ann.big{top:50%}
   .result{align-items:flex-end;padding:0 0 10px}
   .rcard.compact{max-width:64%;padding:9px 14px 10px;border-radius:14px}
   .rcard.compact .rlabel{font-size:22px;letter-spacing:.06em}
@@ -2448,11 +2462,13 @@ function render() {
       felt.appendChild(chip);
     }
     FX.acts[idx] = p.last; FX.bets[idx] = p.bet;
-    // 폰: 좌석이 빈틈없이 붙어 있어 말풍선 둘 곳이 없다. 글 채팅은 아래 채팅 독 두 줄로만 보여주고, 이모지만 플레이트 안쪽 옆(보드 높이를 피한 자리)에 작게 붙인다
+    // 폰: 좌석이 빈틈없이 붙어 있어 말풍선은 자기 좌석의 카드 뒷면 자리(좌석 맨 위)에만 얹는다. 남의 카드·보드·플레이트는 덮지 않는다.
+    // 가장자리 좌석은 안쪽으로만 펼치고(ax0/ax1), 이모지는 플레이트 옆 안쪽에 작게
     const bub = bubbleFor(p.name);
     if (bub) {
       if (!isPhone()) d.appendChild(bub);
       else if (bub.classList.contains('emote')) { bub.classList.add('es', x < 50 ? 'ax0' : 'ax1'); d.appendChild(bub); }
+      else { bub.classList.add('txt', x < 20 ? 'ax0' : x > 80 ? 'ax1' : 'axc'); if (y > 56) bub.classList.add('wide'); d.appendChild(bub); }   // 아래 줄은 옆에 아무것도 없어 넓게. 위쪽 줄은 위 좌석 플레이트·보드와 닿아 좁게
     }
     felt.appendChild(d);
   });
@@ -2469,6 +2485,7 @@ function render() {
   }
   FX.bets[0] = me.bet;
   renderTurnCard();
+  headsUpCheck();
 
   // 내 자리
   const hc = $('heroCards'); hc.innerHTML = '';
@@ -2477,7 +2494,7 @@ function render() {
   $('heroStack').textContent = fmt(me.stack);
   $('hero').className = 'hero' + (G.toAct === 0 ? ' turn' : '') + (isWinner(0) ? ' winner' : '');
   $('hero').querySelectorAll('.bubble').forEach((b) => b.remove());
-  { const bub = bubbleFor(me.name); if (bub && (!isPhone() || bub.classList.contains('emote'))) { bub.classList.add('mine'); felt.appendChild(bub); } }   // 내 말풍선은 펠트 아래 가운데 (독의 카드·버튼을 안 가린다). 폰은 이모지만
+  { const bub = bubbleFor(me.name); if (bub) { bub.classList.add('mine'); felt.appendChild(bub); } }   // 내 말풍선은 펠트 아래 가운데 (독의 카드·버튼을 안 가린다)
   const dealerMe = G.btn === 0 ? ' · 딜러' : '';
   $('heroName').innerHTML = avatarHtml(MODE.net ? me.name : '나') + (MODE.net ? esc(me.name) : '나') + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '') + (MODE.net && me.rebuys ? (TOUR.info ? ' · 리바인 ' + me.rebuys + '회' : ' · 부활 ' + me.rebuys + '회') : '') + (MODE.net && TOUR.info ? ' · 순수익 ' + (netProfit(me) >= 0 ? '+' : '') + fmt(netProfit(me)) : '');
   if (me.hole.length && !me.out && me.hole[0]) {
@@ -2511,8 +2528,29 @@ function renderTurnCard() {
   el.innerHTML = '<div class="who">' + (mine ? '<b>내 차례</b>' : '<b>' + esc(G.players[G.toAct].name) + '</b> 차례') + '</div>' +
     (showSec ? '<div class="sec' + (TURNCLK.sec <= 3 ? ' hot' : '') + '">' + TURNCLK.sec + '</div><div class="bar"><i style="width:' + Math.round(100 * TURNCLK.sec / limit) + '%"></i></div>' : '');
 }
+/** 상황 팝업 두 가지(핸드당 한 번씩)
+ *  HEADS-UP : 3명 이상이 받은 핸드에서 남은 사람이 정확히 2명이 되는 순간
+ *  FAMILY POT : 받은 사람 전원(4명 이상)이 한 명도 안 접고 플랍을 보는 순간 */
+function headsUpCheck() {
+  const live = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river';
+  if (!live) return;
+  const dealt = G.players.filter((p) => !p.out && !p.sitOut && p.hole && p.hole.length);
+  const alive = dealt.filter((p) => !p.folded);
+  if (dealt.length < 3) return;
+  if (FX.familyHand !== G.handNo && G.stage === 'flop' && G.board.length >= 3 && dealt.length >= 4 && alive.length === dealt.length) {
+    FX.familyHand = G.handNo;
+    announce('<span class="hu">FAMILY POT</span><small>' + alive.length + ' players see the flop</small>', 'drama big', 1800);
+    return;
+  }
+  if (FX.headsHand !== G.handNo && alive.length === 2) {
+    FX.headsHand = G.handNo;
+    const names = alive.map((p) => (G.players.indexOf(p) === 0 ? '나' : p.name));
+    announce('<span class="hu">HEADS-UP</span><small>' + esc(names[0]) + ' vs ' + esc(names[1]) + '</small>', 'drama big', 1800);
+    if (alive.indexOf(G.players[0]) >= 0) { try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {} }
+  }
+}
 /** 연출 상태: 같은 핸드 안에서 이미 보여준 카드·배지는 다시 애니메이션하지 않는다 */
-const FX = { hand: -1, boardN: 0, heroDealt: false, revealed: new Set(), bets: {}, acts: {}, pot: 0, winners: new Set(), winHand: -1 };
+const FX = { hand: -1, boardN: 0, heroDealt: false, revealed: new Set(), bets: {}, acts: {}, pot: 0, winners: new Set(), winHand: -1, headsHand: -1, familyHand: -1 };
 /**
  * 상대 좌석 위치(%). 좌석은 레일 위에 앉힌다.
  * 5명 이상이면 양옆 아래까지 넓게 펴서 보드(가운데 카드)와 겹치지 않게 한다.
