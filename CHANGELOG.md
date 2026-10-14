@@ -9,7 +9,7 @@
 
 ### 연출
 - HEADS-UP 팝업: 3명 이상이 받은 핸드에서 남은 사람이 정확히 2명이 되는 순간 "HEADS-UP · 검수 vs 지호"(둘 다 닉네임 그대로)를 테이블 가운데에 한 번 띄운다. 내가 그 둘에 들면 짧게 진동.
-- FAMILY POT 팝업: 4명 이상이 받은 핸드에서 아무도 접지 않고 전원이 플랍을 보면 "FAMILY POT · 8 players see the flop"을 한 번 띄운다.
+- FAMILY POT 팝업: 3명 이상이 받은 핸드에서 아무도 접지 않고 전원이 플랍을 보면 "FAMILY POT · 8 players see the flop"을 한 번 띄운다.
 
 ## v1.4.0 (2026-10-14)
 

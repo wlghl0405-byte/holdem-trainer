@@ -1690,14 +1690,14 @@ function renderTurnCard() {
 }
 /** 상황 팝업 두 가지(핸드당 한 번씩)
  *  HEADS-UP : 3명 이상이 받은 핸드에서 남은 사람이 정확히 2명이 되는 순간
- *  FAMILY POT : 받은 사람 전원(4명 이상)이 한 명도 안 접고 플랍을 보는 순간 */
+ *  FAMILY POT : 받은 사람 전원(3명 이상)이 한 명도 안 접고 플랍을 보는 순간 (사용자 확정 기준) */
 function headsUpCheck() {
   const live = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river';
   if (!live) return;
   const dealt = G.players.filter((p) => !p.out && !p.sitOut && p.hole && p.hole.length);
   const alive = dealt.filter((p) => !p.folded);
   if (dealt.length < 3) return;
-  if (FX.familyHand !== G.handNo && G.stage === 'flop' && G.board.length >= 3 && dealt.length >= 4 && alive.length === dealt.length) {
+  if (FX.familyHand !== G.handNo && G.stage === 'flop' && G.board.length >= 3 && dealt.length >= 3 && alive.length === dealt.length) {
     FX.familyHand = G.handNo;
     announce('<span class="hu">FAMILY POT</span><small>' + alive.length + ' players see the flop</small>', 'drama big', 1800);
     return;
