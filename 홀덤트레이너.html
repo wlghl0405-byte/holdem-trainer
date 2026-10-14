@@ -660,6 +660,63 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
 .actions .actrow.single .abtn{flex:0 0 auto;min-width:180px;max-width:60%}
 @media (max-width:1080px){.actions{height:56px;padding:4px 0 2px}.actions .abtn{height:46px;font-size:12.5px;max-width:none}.actions .abtn small{font-size:10.5px}}
 @media (max-width:720px){.actions{gap:4px;height:50px;padding:3px 0 0}.actions .abtn{height:44px;font-size:12px;padding:2px 1px;border-radius:9px}.actions .abtn small{font-size:10px}}
+/* ═══════════ v1.4 폰 레이아웃: 가림 최소화·테이블 축소·독 활용 ═══════════ */
+/* 테이블 아래 액션 티커(폰): 팝업 배너 대신 최근 액션 두 개를 한 줄로 */
+.ticker{display:none}
+/* 독 상단 남은 시간 바 */
+.dock .tbar{height:4px;border-radius:2px;background:rgba(255,255,255,.12);margin:0 2px 5px;overflow:hidden}
+.dock .tbar i{display:block;height:100%;width:100%;background:var(--gold);transition:width .9s linear}
+.dock .tbar.hot i{background:#E36B60}
+/* 내 차례 아닐 때 버튼 자리: 상황판 */
+.infostrip{display:flex;align-items:center;justify-content:space-around;width:100%;height:100%;gap:6px;padding:0 4px;box-sizing:border-box}
+.infostrip span{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
+.infostrip small{font-size:10.5px;color:var(--mute);font-weight:600;white-space:nowrap}
+.infostrip b{font-size:14px;color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.infostrip span:first-child b{color:var(--gold-2)}
+/* 내 말풍선: 펠트 아래 가운데 (독을 가리지 않는다) */
+.felt .bubble.mine{left:50%;bottom:10px;top:auto;transform:translateX(-50%);z-index:6;max-width:70%}
+.felt .bubble.mine::after{display:none}
+/* 폰 상대 이모지 풍선: 플레이트 옆 안쪽(왼쪽 좌석은 오른쪽, 오른쪽 좌석은 왼쪽). 글 채팅은 풍선 없이 채팅 독으로만 */
+.seat .bubble.es{top:63%;bottom:auto;transform:translateY(-50%);font-size:17px;padding:2px 6px;border-radius:12px;max-width:none}
+.seat .bubble.es.ax0{left:calc(100% + 2px);right:auto}
+.seat .bubble.es.ax1{left:auto;right:calc(100% + 2px)}
+.seat .bubble.es::after{display:none}
+@media (max-width:720px){
+  /* 차례 카드·"내 차례" 태그는 독 상단 한 줄로 통합 */
+  .turncard{display:none}
+  .hero.turn .nm::after{display:none}
+  .ticker{display:flex;align-items:center;justify-content:center;gap:0;height:26px;margin:4px auto 0;padding:0 10px;max-width:600px;width:100%;box-sizing:border-box;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden}
+  .ticker .tk{overflow:hidden;text-overflow:ellipsis;max-width:48%}
+  .ticker .tk.dim{color:var(--mute)}
+  .ticker .who{color:var(--ink);font-weight:700;margin-right:4px}
+  .ticker .sep{margin:0 8px;color:var(--mute)}
+  .ticker .anncard{display:inline-flex;flex-direction:row;gap:0;width:auto;height:auto;background:none;color:var(--ink);box-shadow:none;margin-left:4px;font-size:12px;font-weight:800;align-items:baseline}
+  .ticker .anncard.red{color:#F0A29A}.ticker .anncard .st{font-size:11px}
+  /* 테이블 축소: 화면 절반 남짓. 보드 카드는 한 단계 키운다 */
+  .tablewrap{max-height:55vh;flex:1 1 auto}
+  .felt.many .board .card{width:34px;height:48px}.felt.many .board .card .rk{font-size:13px}.felt.many .board .card .st{font-size:12px}
+  .felt.many .seat .cards{margin-bottom:-12px}
+  /* 독: 줄어든 테이블만큼 내 카드·버튼을 키운다 */
+  .dock{margin-top:4px;padding:6px 10px 8px}
+  .dock .msg{height:26px;font-size:12.5px;margin-bottom:2px;padding-bottom:2px;border-bottom:0}
+  .hero{height:88px;gap:14px}
+  .hero .cards .card{width:52px;height:72px;border-radius:8px}.hero .cards .card .rk{font-size:19px}.hero .cards .card .st{font-size:18px}
+  .hero .ch{font-size:20px}
+  .hero .made{font-size:12px}
+  .actions{height:58px;padding:4px 0 0;gap:5px}.actions .abtn{height:50px;font-size:12.5px}.actions .abtn small{font-size:10.5px}
+  /* 결과 카드: 보드가 보이게 펠트 아래쪽에 작게 */
+  .result{align-items:flex-end;padding:0 0 10px}
+  .rcard.compact{max-width:64%;padding:9px 14px 10px;border-radius:14px}
+  .rcard.compact .rlabel{font-size:22px;letter-spacing:.06em}
+  .rcard.compact .rlabel.fold{font-size:14px;letter-spacing:.04em}
+  .rcard.compact .rdelta{font-size:17px;margin-top:2px}
+  .rcard.compact .rwho{font-size:12px;margin-top:5px}
+  .rcard.compact .rsub{font-size:10.5px}
+  .rcard.compact .rshow{margin-top:7px;padding-top:6px;gap:5px}
+  .rcard.compact .rrow{gap:6px}.rcard.compact .rrow .rn{min-width:30px;font-size:11px}.rcard.compact .rrow .rh{min-width:0;font-size:11px;flex:1}
+  .rcard.compact .rcards{margin-top:6px}
+  .rcard.compact .rbust{margin-top:6px}.rcard.compact .rbsub{font-size:10.5px}
+}
 </style>
 </head>
 <body>
@@ -691,9 +748,11 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
         <div class="tourclock" id="tourClock" hidden></div>
         <div class="turncard" id="turnCard" hidden></div>
       </div>
+      <div class="ticker" id="ticker" hidden></div>
 
       <div class="dock" id="dock">
       <div class="msg" id="msg"></div>
+      <div class="tbar" id="turnBar" hidden><i></i></div>
       <div class="hero" id="hero">
         <div class="cards" id="heroCards"></div>
         <div class="info">
@@ -1826,9 +1885,22 @@ function drive() {
 
 /** 테이블 위에 최근 액션을 크게 띄운다 */
 let annT = null;
+const TICK = [];
+const isPhone = () => window.innerWidth <= 720;
+function renderTicker() {
+  const t = $('ticker'); if (!t) return;
+  t.hidden = !isPhone();
+  t.innerHTML = TICK.length ? TICK.map((h) => '<span class="tk">' + h + '</span>').join('<span class="sep">·</span>') : '<span class="tk dim">진행 기록</span>';
+}
 function announce(html, cls, ms) {
   const el = $('ann');
   if (!el) return;
+  const popup = /drama|drum/.test(cls || '');
+  if (isPhone() && !popup) {
+    TICK.push(html); while (TICK.length > 2) TICK.shift();
+    renderTicker();
+    return;
+  }
   el.innerHTML = html;
   el.className = 'ann on ' + (cls || '');
   clearTimeout(annT);
@@ -1852,14 +1924,16 @@ function showResult(res) {
   const myName = me.name;
   // 폴드는 승패가 아니라 '기권'이다. 손익 0이어도 DRAW(팟 분배)와 구분해서 표기한다.
   const kind = me.folded ? 'fold' : delta > 0 ? 'win' : delta < 0 ? 'lose' : 'draw';
-  const label = me.folded ? 'FOLD' : delta > 0 ? 'WIN' : delta < 0 ? 'LOSE' : 'DRAW';
+  const label = me.folded ? '폴드' : delta > 0 ? 'WIN' : delta < 0 ? 'LOSE' : 'DRAW';
   const others = res.winners.filter((w) => w !== myName);
 
+  const compact = isPhone();
+  const won = res.pots && res.pots.length ? res.pots.reduce((t, p) => t + p.amt, 0) : (FX.potMax || 0);
   let who = '';
   if (iWon && res.winners.length === 1) who = res.allFolded ? '상대가 모두 폴드했습니다' : '내 <b>' + res.hand + '</b> 승리';
   else if (iWon) who = '분할 승리 · <b>' + res.hand + '</b>';
-  else if (res.allFolded) who = '<b>' + esc(others.join(', ')) + '</b> 승리 (모두 폴드)';
-  else who = '<b>' + esc(others.join(', ')) + '</b> 승리 · ' + res.hand;
+  else if (res.allFolded) who = '<b>' + esc(others.join(', ')) + '</b> +' + fmt(won) + ' · 모두 폴드';
+  else who = '<b>' + esc(others.join(', ')) + '</b> +' + fmt(won) + ' · ' + res.hand;
 
   const mini = (c) => '<span class="card sm' + (RED(c.s) ? ' red' : '') + '"><span class="rk">' +
     HE.rankName(c.r) + '</span><span class="st">' + SUIT[c.s] + '</span></span>';
@@ -1870,14 +1944,15 @@ function showResult(res) {
     const rows = res.rows.map((r) => Object.assign({}, r, { isMe: r.isMe != null ? r.isMe : r.seat === 0 }));
     const winRows = rows.filter((r) => r.win);
     const myRow = rows.find((r) => r.isMe);
-    const show = winRows.slice(0, 3);
+    const show = winRows.slice(0, compact ? 2 : 3);
     if (myRow && !myRow.win) show.push(myRow);
+    // 폰: 보드 5장은 테이블에 그대로 보이므로 홀카드 2장만 비교한다
     body = '<div class="rshow">' + show.map((r) =>
       '<div class="rrow' + (r.win ? ' w' : '') + '">' +
       '<span class="rn">' + (r.isMe ? '나' : esc(r.name)) + '</span>' +
       '<span class="rh">' + r.hand + '</span>' +
       '<span class="rc"><span class="rhole">' + r.hole.map(mini).join('') + '</span>' +
-      r.cards.map(mini).join('') + '</span></div>').join('') + '</div>';
+      (compact ? '' : r.cards.map(mini).join('')) + '</span></div>').join('') + '</div>';
     if (myRow && !myRow.win) {
       body += '<div class="rsub" style="margin-top:8px">' + (winRows[0] ? esc(winRows[0].name) + '의 <b style="color:#EBD9A0">' + winRows[0].hand + '</b>에 밀렸습니다' : '') + '</div>';
     }
@@ -1900,7 +1975,7 @@ function showResult(res) {
     ? '<div class="rbust"><div class="rbtitle">파산</div><div class="rbsub">칩을 모두 잃었습니다. 다음 핸드에 <b>시작 칩의 ' + rebuyPct(me) + '%</b> = <b>' + fmt(rebuyAmt(me)) + '</b>으로 다시 시작합니다' + ((me.rebuys || 0) > 0 ? ' <span class="rbn">' + ((me.rebuys || 0) + 1) + '번째 부활</span>' : '') + '</div></div>'
     : '';
   $('result').innerHTML = (kind === 'win' ? confettiHtml() : '') +
-    '<div class="rcard ' + kind + (bust ? ' bust' : '') + '">' +
+    '<div class="rcard ' + kind + (bust ? ' bust' : '') + (compact ? ' compact' : '') + '">' +
     '<div class="rlabel ' + kind + '">' + label + '</div>' +
     '<div class="rdelta ' + kind + '">' + (delta > 0 ? '+' : '') + fmt(delta) + '</div>' +
     '<div class="rwho">' + who + '</div>' + body + bust + '</div>';
@@ -2113,7 +2188,7 @@ function netHandle(m) {
     $('msg').textContent = m.sec > 0 ? '다음 핸드까지 ' + m.sec + '초' : '';
   } else if (m.t === 'turnclock') {
     TURNCLK.sec = m.sec; TURNCLK.limit = CFG.turn; renderTurnCard();
-    if (G.toAct === 0) $('msg').innerHTML = '<span class="pill' + (m.sec <= 3 ? ' hot' : '') + '">내 차례 · ' + m.sec + '초</span>';
+    if (G.toAct === 0) $('msg').innerHTML = myTurnMsg();
   } else if (m.t === 'gameover') {
     NET.lobby = m.lobby || NET.lobby;
     $('msg').innerHTML = '<b>' + (m.mode === 'tour' ? '토너먼트 종료' : '게임 종료') + '</b><br>' + esc(m.winner || '') + ' 승리';
@@ -2254,8 +2329,8 @@ function chatPush(name, text, mine) {
   const emote = EMOTES.includes(text);
   CHAT.lines.push({ name, text, mine }); if (CHAT.lines.length > 100) CHAT.lines.shift();
   CHAT.bubbles[name] = { text, emote, until: Date.now() + 3500 };
-  renderChat(); render();
-  setTimeout(render, 3700);
+  renderChat();
+  if (G.players && G.players.length) { render(); setTimeout(() => { if (G.players && G.players.length) render(); }, 3700); }   // 로비(착석 전)에서는 테이블 렌더 없음
 }
 function renderChat() {
   const el = $('chat'); if (!el) return;
@@ -2316,7 +2391,7 @@ function render() {
   // 보드
   const bd = $('board'); bd.innerHTML = '';
   if (G.stage !== 'showdown') PRE.board = G.board.length;
-  if (FX.hand !== G.handNo) { FX.hand = G.handNo; FX.boardN = 0; FX.heroDealt = false; FX.revealed = new Set(); FX.bets = {}; FX.acts = {}; FX.pot = 0; }
+  if (FX.hand !== G.handNo) { FX.hand = G.handNo; FX.boardN = 0; FX.heroDealt = false; FX.revealed = new Set(); FX.bets = {}; FX.acts = {}; FX.pot = 0; FX.potMax = 0; TICK.length = 0; renderTicker(); }
   const nBoard = REVEAL.on ? Math.min(G.board.length, REVEAL.board) : G.board.length;
   const heroBest = REVEAL.on ? new Set() : bestSet();
   for (let i = 0; i < 5; i++) {
@@ -2328,10 +2403,10 @@ function render() {
   }
   FX.boardN = Math.max(nBoard, Math.min(FX.boardN, nBoard));
   // 팟이 커지면 금액이 튀어오른다
-  { const potNow = potTotal(); const pe = $('pot'); if (potNow > FX.pot && FX.pot > 0 && pe) { pe.classList.remove('bump'); void pe.offsetWidth; pe.classList.add('bump'); } FX.pot = potNow; }
+  { const potNow = potTotal(); const pe = $('pot'); if (potNow > FX.pot && FX.pot > 0 && pe) { pe.classList.remove('bump'); void pe.offsetWidth; pe.classList.add('bump'); } FX.pot = potNow; FX.potMax = Math.max(FX.potMax || 0, potNow); }
 
   // 좌석
-  document.querySelectorAll('.seat, .betchip').forEach((s) => s.remove());
+  document.querySelectorAll('.seat, .betchip, .bubble.mine, .bubble.side').forEach((s) => s.remove());
   const felt = $('felt');
   const opps = G.players.slice(1);            // 0번은 항상 나(온라인은 서버가 내 자리를 0번으로 돌려 보낸다)
   const n = opps.length;
@@ -2373,7 +2448,12 @@ function render() {
       felt.appendChild(chip);
     }
     FX.acts[idx] = p.last; FX.bets[idx] = p.bet;
-    const bub = bubbleFor(p.name); if (bub) d.appendChild(bub);
+    // 폰: 좌석이 빈틈없이 붙어 있어 말풍선 둘 곳이 없다. 글 채팅은 아래 채팅 독 두 줄로만 보여주고, 이모지만 플레이트 안쪽 옆(보드 높이를 피한 자리)에 작게 붙인다
+    const bub = bubbleFor(p.name);
+    if (bub) {
+      if (!isPhone()) d.appendChild(bub);
+      else if (bub.classList.contains('emote')) { bub.classList.add('es', x < 50 ? 'ax0' : 'ax1'); d.appendChild(bub); }
+    }
     felt.appendChild(d);
   });
 
@@ -2397,7 +2477,7 @@ function render() {
   $('heroStack').textContent = fmt(me.stack);
   $('hero').className = 'hero' + (G.toAct === 0 ? ' turn' : '') + (isWinner(0) ? ' winner' : '');
   $('hero').querySelectorAll('.bubble').forEach((b) => b.remove());
-  { const bub = bubbleFor(me.name); if (bub) $('hero').appendChild(bub); }
+  { const bub = bubbleFor(me.name); if (bub && (!isPhone() || bub.classList.contains('emote'))) { bub.classList.add('mine'); felt.appendChild(bub); } }   // 내 말풍선은 펠트 아래 가운데 (독의 카드·버튼을 안 가린다). 폰은 이모지만
   const dealerMe = G.btn === 0 ? ' · 딜러' : '';
   $('heroName').innerHTML = avatarHtml(MODE.net ? me.name : '나') + (MODE.net ? esc(me.name) : '나') + dealerMe + (me.bet > 0 ? ' · 베팅 ' + fmt(me.bet) : '') + (MODE.net && me.rebuys ? (TOUR.info ? ' · 리바인 ' + me.rebuys + '회' : ' · 부활 ' + me.rebuys + '회') : '') + (MODE.net && TOUR.info ? ' · 순수익 ' + (netProfit(me) >= 0 ? '+' : '') + fmt(netProfit(me)) : '');
   if (me.hole.length && !me.out && me.hole[0]) {
@@ -2421,11 +2501,12 @@ const TURNCLK = { sec: 0, limit: 0 };
 function renderTurnCard() {
   const el = $('turnCard'); if (!el) return;
   const live = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river';
-  if (!live || G.toAct < 0) { el.hidden = true; return; }
+  if (!live || G.toAct < 0) { el.hidden = true; if ($('turnBar')) $('turnBar').hidden = true; return; }
   const mine = G.toAct === 0;
   const limit = MODE.net ? CFG.turn : 0;
   const showSec = mine && limit > 0 && TURNCLK.limit === limit && TURNCLK.sec > 0;
   el.hidden = false;
+  { const bar = $('turnBar'); if (bar) { bar.hidden = !showSec; const fill = bar.querySelector ? bar.querySelector('i') : null; if (showSec && fill && fill.style) { fill.style.width = Math.round(100 * TURNCLK.sec / limit) + '%'; bar.classList.toggle('hot', TURNCLK.sec <= 3); } } }
   el.className = 'turncard' + (mine ? ' me' : '') + (showSec ? '' : ' wait');
   el.innerHTML = '<div class="who">' + (mine ? '<b>내 차례</b>' : '<b>' + esc(G.players[G.toAct].name) + '</b> 차례') + '</div>' +
     (showSec ? '<div class="sec' + (TURNCLK.sec <= 3 ? ' hot' : '') + '">' + TURNCLK.sec + '</div><div class="bar"><i style="width:' + Math.round(100 * TURNCLK.sec / limit) + '%"></i></div>' : '');
@@ -2518,6 +2599,19 @@ function bestSet() {
   return new Set(bf.cards.map(HE.cardId));
 }
 
+function myTurnMsg() {
+  const me = G.players[0]; const toCall = G.maxBet - me.bet;
+  const sec = MODE.net && CFG.turn > 0 && TURNCLK.limit === CFG.turn && TURNCLK.sec > 0 ? TURNCLK.sec : 0;
+  return '<span class="pill' + (sec > 0 && sec <= 3 ? ' hot' : '') + '">내 차례' + (sec > 0 ? ' · ' + sec + '초' : '') + '</span> ' +
+    (toCall > 0 ? '콜 ' + fmt(Math.min(toCall, me.stack)) + ' 필요' : '체크 가능');
+}
+/** 내 차례가 아닐 때 버튼 자리에 보이는 상황판: 팟·콜 금액·내 베팅·남은 인원 */
+function infoStrip() {
+  const me = G.players[0]; const toCall = Math.max(0, G.maxBet - me.bet);
+  const alive = G.players.filter((p) => !p.out && !p.folded && !p.sitOut).length;
+  const items = [['팟', fmt(potTotal())], ['콜', me.folded ? '폴드' : toCall > 0 ? fmt(Math.min(toCall, me.stack)) : '없음'], ['내 베팅', fmt(me.bet)], ['남은 인원', alive + '명']];
+  return '<div class="infostrip">' + items.map(([k, v]) => '<span><small>' + k + '</small><b>' + v + '</b></span>').join('') + '</div>';
+}
 function renderActions() {
   const a = $('actions'); a.innerHTML = '';
   const me = G.players[0];
@@ -2550,10 +2644,12 @@ function renderActions() {
     else if (MODE.net && (me.out || me.stack <= 0)) $('msg').innerHTML = '<b>파산</b><br>' + bustLine(me);
     else if (G.stage === 'showdown') { if (REVEAL.on) $('msg').textContent = '쇼다운 · 패 공개 중'; }
     else $('msg').textContent = G.toAct >= 0 ? G.players[G.toAct].name + ' 차례' : (MODE.net && G.stage === 'idle' ? '방장이 시작하면 딜' : '');
+    const live = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river';
+    if (live && !me.out && G.toAct >= 0) a.innerHTML = infoStrip();
     return;
   }
   const toCall = G.maxBet - me.bet;
-  $('msg').textContent = toCall > 0 ? '콜 ' + fmt(Math.min(toCall, me.stack)) + ' 필요' : '체크 가능';
+  $('msg').innerHTML = myTurnMsg();
 
   const row1 = document.createElement('div'); row1.className = 'actrow main'; a.appendChild(row1);
   const mk = (label, cls, fn, dis) => {
