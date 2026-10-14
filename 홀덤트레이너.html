@@ -772,6 +772,23 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
 }
 /* 폰 좌석 띠: 금액 10만 단위까지 한 줄에 */
 @media (max-width:720px){.seat{width:76px}.seat .act{font-size:10.5px;padding:3px 3px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}.seat .plate .nm{padding:3px 5px 0}.seat .plate .ch{padding:0 5px 4px}}
+/* ═══════════ 코치 ═══════════ */
+.coachline{font-size:11.5px;color:var(--ink-2);padding:3px 6px 4px;margin:0 0 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);line-height:1.35;overflow:hidden}
+.coachline b{color:var(--ink)}
+.coachline small{display:block;font-size:10.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coachline.good{border-color:rgba(127,211,166,.5);background:rgba(31,111,67,.18)}.coachline.good b{color:#BFF0D6}
+.coachline.ok{border-color:rgba(212,175,55,.45);background:rgba(201,162,39,.12)}.coachline.ok b{color:#F3D77A}
+.coachline.bad{border-color:rgba(222,106,96,.55);background:rgba(192,72,60,.16)}.coachline.bad b{color:#F0A29A}
+.coachbox{margin-bottom:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}
+.chead{display:flex;align-items:center;gap:8px;font-size:13px}.chead b{color:var(--gold)}.chead span{color:var(--mute);font-size:11.5px;flex:1}
+.cstreet{display:flex;gap:6px;margin:8px 0}.cst{flex:1;text-align:center;background:rgba(0,0,0,.2);border-radius:8px;padding:5px 0}.cst small{display:block;font-size:10px;color:var(--mute)}.cst b{font-size:13px}
+.clogs{display:flex;flex-direction:column;gap:4px}
+.clog{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.18)}
+.clog .cs{min-width:28px;font-weight:800;text-align:center;border-radius:6px;padding:1px 0}
+.clog.good .cs{background:rgba(31,111,67,.4);color:#BFF0D6}.clog.ok .cs{background:rgba(201,162,39,.3);color:#F3D77A}.clog.bad .cs{background:rgba(192,72,60,.35);color:#F0A29A}
+.clog .cm{flex:1;min-width:0}.clog .cm small{display:block;color:var(--mute);font-size:10.5px}
+.cnote{font-size:10.5px;color:var(--mute);margin-top:8px;line-height:1.45}
+@media (max-width:720px){.coachline{font-size:11px;padding:3px 6px}.coachline small{font-size:10px}}
 /* ═══════════ v1.5 이펙트: 펠트 번쩍임·떠오르는 숫자·내 차례 독·폴드 카드·초읽기 ═══════════ */
 .felt.flash-gold::after{animation:feltGold .7s ease-out}
 .felt.flash-red::after{animation:feltRed .7s ease-out}
@@ -826,6 +843,7 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
       <div class="dock" id="dock">
       <div class="msg" id="msg"></div>
       <div class="tbar" id="turnBar" hidden><i></i></div>
+      <div class="coachline" id="coachLine" hidden></div>
       <div class="hero" id="hero">
         <div class="cards" id="heroCards"></div>
         <div class="info">
@@ -953,6 +971,10 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
     <div class="fld localonly">
       <label>어드바이저</label>
       <div class="opts" id="optAdv"></div>
+    </div>
+    <div class="fld localonly">
+      <label>코치</label>
+      <div class="opts" id="optCoach"></div>
     </div>
     <div class="fld netcfg">
       <label>효과음</label>
@@ -1815,9 +1837,9 @@ const SUIT = HE.SUIT_CH;
 const RED = (s) => s === 1 || s === 2;
 
 /* ───────── 상태 ───────── */
-const CFG = { opp: 3, diff: 'normal', advisor: true, stack: 20000, bb: 200, speed: 'normal', turn: 10, mode: 'tour', levelMin: 5, rebuyMax: 1, rebuyUntil: 4 };
+const CFG = { opp: 3, diff: 'normal', advisor: true, coach: true, stack: 20000, bb: 200, speed: 'normal', turn: 10, mode: 'tour', levelMin: 5, rebuyMax: 1, rebuyUntil: 4 };
 /** 마지막 설정 기억: 다음에 방을 팔 때 다시 고르지 않아도 되게 */
-const CFG_KEYS = ['opp', 'diff', 'advisor', 'stack', 'bb', 'speed', 'turn', 'mode', 'levelMin', 'rebuyMax', 'rebuyUntil'];
+const CFG_KEYS = ['opp', 'diff', 'advisor', 'coach', 'stack', 'bb', 'speed', 'turn', 'mode', 'levelMin', 'rebuyMax', 'rebuyUntil'];
 function saveCfg() { try { localStorage.setItem('ht.cfg', JSON.stringify(CFG_KEYS.reduce((o, k) => (o[k] = CFG[k], o), {}))); } catch (e) {} }
 function loadCfg() {
   try {
@@ -1998,8 +2020,126 @@ function startHand() {
 }
 
 /** 내 액션 (혼자 연습이면 테이블에 직접, 온라인이면 서버로) */
+/* ───────── 코치 (혼자 연습): 내 결정을 GTO 근사 기준으로 채점 ─────────
+ * 기준은 세 가지다. ①프리플랍: 포지션별 오픈·3벳·콜 레인지(핸드 등급 S~D) ②플랍 이후: 승률 대 팟오즈, 손 강도(나를 이기는 조합 비율), 드로우 ③벳·레이즈 크기 구간.
+ * 완전한 GTO 솔버가 아니라 그 원칙을 수치로 옮긴 근사치이므로 "기준"이라 부른다. 점수 100=기준과 같음, 70~85=허용, 50 이하=실수. */
+const COACH = {
+  log: [], total: 0, sum: 0, street: { preflop: [0, 0], flop: [0, 0], turn: [0, 0], river: [0, 0] }, lineT: null,
+  load() { try { const o = JSON.parse(localStorage.getItem('ht.coach') || 'null'); if (o && o.street) { this.log = o.log || []; this.total = o.total || 0; this.sum = o.sum || 0; this.street = o.street; } } catch (e) {} },
+  save() { try { localStorage.setItem('ht.coach', JSON.stringify({ log: this.log.slice(-40), total: this.total, sum: this.sum, street: this.street })); } catch (e) {} },
+  reset() { this.log = []; this.total = 0; this.sum = 0; this.street = { preflop: [0, 0], flop: [0, 0], turn: [0, 0], river: [0, 0] }; this.save(); renderCoachLine(); renderAdvisor(); },
+  acc() { return this.total ? Math.round(this.sum / this.total) : 0; },
+};
+COACH.load();
+const KO_ACT = { fold: '폴드', check: '체크', call: '콜', raise: '레이즈' };
+/** 내 액션을 채점한다. 반환 {score, best, why, street, mine} */
+function coachEval(type, amount) {
+  const me = G.players[0];
+  if (!me || !me.hole || !me.hole.length || me.folded || me.out) return null;
+  const live = G.stage === 'preflop' || G.stage === 'flop' || G.stage === 'turn' || G.stage === 'river';
+  if (!live || typeof HE === 'undefined' || !HE.equity) return null;
+  const bb = CFG.bb, pot = potTotal(), toCall = Math.max(0, G.maxBet - me.bet);
+  const opp = Math.max(1, inHand().length - 1);
+  const potOdds = toCall > 0 ? toCall / (pot + toCall) : 0;
+  const pos = (G.position ? G.position(0) : 'late');
+  const street = G.stage;
+  const raiseBy = type === 'raise' ? (amount || 0) - G.maxBet : 0;            // 레이즈로 올리는 양
+  const raiseTo = type === 'raise' ? (amount || 0) : 0;
+  const mine = KO_ACT[type] + (type === 'raise' ? ' ' + fmt(amount) : type === 'call' ? ' ' + fmt(Math.min(toCall, me.stack)) : '');
+  const allinCall = toCall >= me.stack;
+  // 점수표: {액션: [점수, 이유]} 를 만들고 내 액션 점수를 읽는다
+  const table = {}; let best = ''; let why = '';
+  const put = (k, sc, w) => { table[k] = [sc, w || '']; if (!best || sc > table[best][0]) best = k; };
+  if (street === 'preflop') {
+    const hc = HE.handClass(me.hole); const t = hc.tier;
+    const unopened = G.maxBet <= bb;
+    const openOk = { early: 'SAB', late: 'SABC', blind: 'SAB' }[pos] || 'SAB';
+    const posKo = { early: '앞자리', late: '뒷자리', blind: '블라인드' }[pos];
+    if (unopened) {
+      if (openOk.includes(t)) {
+        put('raise', 100, hc.label + '은(는) ' + posKo + '에서 오픈 레이즈 범위'); put('call', toCall > 0 ? 45 : 0, '림프(그냥 콜)보다 레이즈가 기준'); put('check', toCall === 0 ? 55 : 0, '옵션이 있으면 레이즈로 주도권을 잡는 것이 기준'); put('fold', 15, '오픈 범위 안의 손을 접음');
+      } else if (t === 'C' && pos !== 'early') {
+        put('raise', 85, '경계선 손: 뒷자리라면 레이즈 허용'); put('fold', 100, hc.label + '은(는) ' + posKo + ' 오픈 범위 밖'); put('call', toCall > 0 ? 50 : 0, '림프 대신 레이즈 또는 폴드'); put('check', toCall === 0 ? 100 : 0, '공짜면 체크');
+      } else {
+        put('fold', 100, hc.label + '은(는) ' + posKo + ' 오픈 범위 밖'); put('check', toCall === 0 ? 100 : 0, '공짜면 체크'); put('call', toCall > 0 ? 30 : 0, '약한 손으로 림프'); put('raise', pos === 'late' && t === 'C' ? 70 : 25, '범위 밖 손으로 오픈');
+      }
+      if (type === 'raise') { const x = raiseTo / bb; if (x < 2.2) table.raise = [Math.min(table.raise[0], 70), '오픈은 2.2~4BB가 기준 (지금 ' + x.toFixed(1) + 'BB)']; else if (x > 5 && raiseTo < me.bet + me.stack) table.raise = [Math.min(table.raise[0], 70), '오픈이 너무 큼: 2.2~4BB가 기준 (지금 ' + x.toFixed(1) + 'BB)']; }
+    } else {
+      const big = toCall >= bb * 8 || allinCall;
+      const x = toCall / bb;
+      if (t === 'S') { put('raise', 100, hc.label + ': 3벳(리레이즈)이 기준'); put('call', 80, '프리미엄 손은 3벳이 기준, 콜도 허용'); put('fold', 0, '최상위 손을 접음'); }
+      else if (t === 'A') { put('call', 100, hc.label + ': 레이즈에 콜 범위'); put('raise', big ? 60 : 90, big ? '큰 레이즈에는 콜이 안전' : '3벳도 허용'); put('fold', big ? 60 : 20, big ? '큰 레이즈 앞 폴드는 허용' : '좋은 손을 레이즈 한 번에 접음'); }
+      else if (t === 'B') { put('call', big ? 40 : 100, big ? '큰 레이즈(' + x.toFixed(0) + 'BB)에는 콜 범위 아님' : hc.label + ': 레이즈 한 번에는 콜 범위'); put('fold', big ? 100 : 60, big ? '큰 레이즈 앞 폴드가 기준' : '콜 범위 손을 접음'); put('raise', big ? 30 : 55, '3벳 범위는 아님'); }
+      else if (t === 'C') { const cheap = x <= 3 && pos === 'late'; put('fold', 100, hc.label + ': 레이즈 앞에서는 폴드가 기준'); put('call', cheap ? 75 : 35, cheap ? '싸고 뒷자리면 콜 허용' : '범위 밖 콜'); put('raise', 25, '범위 밖 3벳'); }
+      else { put('fold', 100, hc.label + ': 레이즈 앞에서는 폴드'); put('call', 15, '범위 밖 콜'); put('raise', 15, '범위 밖 3벳'); }
+      if (type === 'raise' && raiseTo < me.bet + me.stack) { const m = raiseTo / G.maxBet; if (m < 2.2) table.raise = [Math.min(table.raise[0], 70), '3벳은 상대 레이즈의 2.5~4배가 기준 (지금 ' + m.toFixed(1) + '배)']; }
+    }
+  } else {
+    const eq = HE.equity(me.hole, G.board, opp, 1200);
+    const bh = HE.beatingHands(me.hole, G.board); const ratio = bh ? bh.beat / bh.total : 0.5;
+    const ou = HE.outs(me.hole, G.board); const draw = G.board.length < 5 && ou.n >= 8;
+    const st = ratio < 0.01 ? 'S' : ratio < 0.05 ? 'A' : ratio < 0.15 ? 'B' : ratio < 0.35 ? 'C' : 'D';
+    const eqS = (eq * 100).toFixed(0) + '%', poS = (potOdds * 100).toFixed(0) + '%';
+    const sizeOk = (toPot) => toPot >= 0.33 && toPot <= 1.0;
+    if (toCall === 0) {
+      if (st === 'S' || st === 'A' || eq >= 0.65) { put('raise', 100, '강한 손(승률 ' + eqS + '): 밸류 벳 50~75% 팟이 기준'); put('check', 70, '강한 손 체크는 트랩으로만 허용'); }
+      else if (st === 'B' || eq >= 0.45) { put('raise', 100, '중간 이상 손: 33~66% 팟 벳'); put('check', 95, '체크도 기준 안'); }
+      else if (draw) { put('raise', 95, '드로우(아웃츠 ' + ou.n + '장): 세미블러프 벳 허용'); put('check', 100, '드로우는 체크해서 공짜 카드도 기준'); }
+      else { put('check', 100, '약한 손(승률 ' + eqS + '): 체크가 기준'); put('raise', opp === 1 ? 75 : 40, opp === 1 ? '헤즈업 블러프는 허용' : '여러 명 상대 블러프는 손해'); }
+      if (type === 'raise') { const toPot = raiseBy / Math.max(1, pot); if (!sizeOk(toPot) && raiseTo < me.bet + me.stack) table.raise = [Math.min(table.raise[0], 70), (toPot < 0.33 ? '벳이 너무 작음' : '벳이 너무 큼') + ': 팟의 33~100%가 기준 (지금 ' + Math.round(toPot * 100) + '%)']; }
+    } else {
+      const edge = eq - potOdds;
+      if (edge >= 0.15 && (st === 'S' || st === 'A')) { put('raise', 100, '강한 손(승률 ' + eqS + ' ≫ 필요 ' + poS + '): 레이즈로 팟 키우기'); put('call', 85, '콜도 허용(트랩)'); put('fold', 0, '강한 손 폴드'); }
+      else if (edge >= 0) { put('call', 100, '승률 ' + eqS + ' ≥ 필요 ' + poS + ': 콜 가치 있음'); put('raise', st === 'S' || st === 'A' || st === 'B' ? 85 : 55, st === 'S' || st === 'A' || st === 'B' ? '레이즈도 허용' : '약한 손 레이즈는 손해'); put('fold', edge < 0.05 ? 70 : 30, edge < 0.05 ? '근소하면 폴드도 허용' : '콜 가치 있는 손을 접음'); }
+      else {
+        const implied = draw && toCall <= pot * 0.35 && G.board.length < 5;
+        put('fold', 100, '승률 ' + eqS + ' < 필요 ' + poS + ': 폴드가 손실을 줄임'); put('call', implied ? 85 : 20, implied ? '드로우 + 싼 가격: 임플라이드 오즈로 콜 허용' : '필요 승률에 못 미치는 콜'); put('raise', opp === 1 && !allinCall ? 50 : 15, opp === 1 ? '블러프 레이즈는 헤즈업에서만 가끔' : '여러 명 상대 블러프 레이즈');
+      }
+      if (type === 'raise' && raiseTo < me.bet + me.stack) { const m = raiseTo / Math.max(1, G.maxBet); if (m < 2.2) table.raise = [Math.min(table.raise[0], 70), '레이즈는 상대 벳의 2.5~3.5배가 기준 (지금 ' + m.toFixed(1) + '배)']; }
+    }
+  }
+  const t = table[type] || [50, ''];
+  const bestKo = KO_ACT[best] || best;
+  return { score: t[0], best: bestKo, why: t[1] || table[best][1], bestWhy: table[best][1], street, mine, hand: G.handNo };
+}
+function coachRecord(v) {
+  if (!v) return;
+  COACH.total++; COACH.sum += v.score;
+  const st = COACH.street[v.street]; if (st) { st[0]++; st[1] += v.score; }
+  COACH.log.push({ s: v.score, m: v.mine, b: v.best, w: v.why, st: v.street, h: v.hand });
+  if (COACH.log.length > 40) COACH.log.shift();
+  COACH.save();
+  renderCoachLine(v);
+  if (v.score < 60) SFX.play('fold');
+}
+const grade = (sc) => sc >= 90 ? ['good', '✓ 좋은 선택'] : sc >= 65 ? ['ok', '△ 괜찮음'] : ['bad', '✗ 실수'];
+function renderCoachLine(v) {
+  const el = $('coachLine'); if (!el) return;
+  const show = !MODE.net && CFG.coach;
+  el.hidden = !show; if (!show) return;
+  clearTimeout(COACH.lineT);
+  if (v) {
+    const g = grade(v.score);
+    el.className = 'coachline ' + g[0];
+    el.innerHTML = '<b>' + g[1] + '</b> ' + esc(v.mine) + (v.score < 90 ? ' · 기준은 <b>' + esc(v.best) + '</b>' : '') + '<small>' + esc(v.why) + '</small>';
+    COACH.lineT = setTimeout(() => renderCoachLine(), 6000);
+  } else {
+    el.className = 'coachline';
+    el.innerHTML = COACH.total ? '<b>코치</b> 기준 일치 ' + COACH.acc() + '% <small>' + COACH.total + '개 결정 · 어드바이저 버튼에서 기록</small>' : '<b>코치</b> 내 결정마다 GTO 기준과 비교합니다';
+  }
+}
+function coachPanelHtml() {
+  if (MODE.net || !CFG.coach) return '';
+  const S = COACH.street; const ko = { preflop: '프리플랍', flop: '플랍', turn: '턴', river: '리버' };
+  const rows = Object.keys(S).map((k) => '<span class="cst"><small>' + ko[k] + '</small><b>' + (S[k][0] ? Math.round(S[k][1] / S[k][0]) + '%' : '-') + '</b></span>').join('');
+  const recent = COACH.log.slice(-8).reverse().map((l) => { const g = grade(l.s); return '<div class="clog ' + g[0] + '"><span class="cs">' + l.s + '</span><span class="cm">' + esc(l.m) + (l.s < 90 ? ' → ' + esc(l.b) : '') + '<small>' + esc(l.w) + '</small></span></div>'; }).join('');
+  return '<div class="coachbox"><div class="chead"><b>코치 · GTO 기준 일치 ' + COACH.acc() + '%</b><span>' + COACH.total + '개 결정</span><button class="opt small" id="coachReset">초기화</button></div>' +
+    '<div class="cstreet">' + rows + '</div>' + (recent ? '<div class="clogs">' + recent + '</div>' : '<div class="adv-off">결정을 내리면 여기에 채점이 쌓입니다</div>') +
+    '<div class="cnote">기준 = 포지션별 오픈·3벳 레인지, 승률 대 팟오즈, 벳 크기 33~100% 팟. 솔버 결과가 아닌 원칙 기반 근사치</div></div>';
+}
 function doAction(i, type, amount) {
   if (MODE.net) { netSend({ t: 'act', type, amount }); return; }
+  if (i === 0 && CFG.coach) { try { coachRecord(coachEval(type, amount)); } catch (e) {} }
   T.doAction(i, type, amount);
   drive();
 }
@@ -2869,7 +3009,10 @@ function renderActions() {
 /* ───────── 어드바이저 ───────── */
 function renderAdvisor() {
   renderAdvisorBox();
+  { const cp = coachPanelHtml(); if (cp && $('advBox')) $('advBox').innerHTML = cp + $('advBox').innerHTML; }
   if ($('advPop')) $('advPop').innerHTML = $('advBox').innerHTML;
+  document.querySelectorAll('#coachReset').forEach((b) => { b.onclick = () => { if (confirm('코치 기록을 지울까요?')) COACH.reset(); }; });
+  renderCoachLine();
   if ($('toggleAdv')) $('toggleAdv').textContent = CFG.advisor ? '끄기' : '켜기';
 }
 function renderAdvisorBox() {
@@ -3064,6 +3207,7 @@ function buildOpts() {
   mk('optSfx', [[true, '켜기'], [false, '끄기']], () => SFX.on, (v) => { SFX.on = v; store.set('ht.sfx', v ? '1' : '0'); if (v) SFX.play('chip'); });
   mk('optDiff', [['easy', '하수'], ['normal', '중수'], ['hard', '고수'], ['pro', '프로'], ['mix', '섞기']], () => CFG.diff, (v) => CFG.diff = v);
   mk('optAdv', [[true, '받기'], [false, '안받기']], () => CFG.advisor, (v) => CFG.advisor = v);
+  mk('optCoach', [[true, '켜기'], [false, '끄기']], () => CFG.coach, (v) => CFG.coach = v);
   mk('optSpeed', [['slow', '느리게'], ['normal', '보통'], ['fast', '빠르게']], () => CFG.speed, (v) => CFG.speed = v);
   mk('optTurn', [[3, '3초'], [5, '5초'], [10, '10초'], [0, '무제한']], () => CFG.turn, (v) => CFG.turn = v);
   mk('optMode', [['tour', '토너먼트'], ['cash', '캐시']], () => CFG.mode, (v) => { CFG.mode = v; if (v === 'tour') { CFG.bb = 200; if (CFG.stack < 20000) CFG.stack = 20000; } });
