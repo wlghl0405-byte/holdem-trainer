@@ -60,7 +60,7 @@ class Room {
     this.code = code;
     this.seats = [];              // {name, token, ws, bot, online, leave}
     this.waiting = [];            // 진행 중 들어온 사람 (다음 핸드부터 참여)
-    this.cfg = { stack: 10000, bb: 100, diff: 'normal', speed: 'slow', turn: 10, needHuman: true, mode: 'cash', levelMin: 5, rebuyMax: 2, rebuyUntil: 4 };   // needHuman: 사람이 아무도 없으면(모두 자리 비움) 봇끼리 돌리지 않고 멈춘다
+    this.cfg = { stack: 10000, bb: 100, diff: 'normal', speed: 'slow', turn: 10, needHuman: true, mode: 'cash', levelMin: 5, rebuyMax: 1, rebuyUntil: 4 };   // needHuman: 사람이 아무도 없으면(모두 자리 비움) 봇끼리 돌리지 않고 멈춘다
     this.tour = { level: 1, elapsed: 0, pendingLevel: 0, finished: [] };   // 토너먼트: 현재 레벨, 이번 레벨 경과(ms), 다음 핸드부터 적용될 레벨, 탈락자 명단
     this.levelT = null;
     this.table = new TB.Table(this.cfg, (type, data) => this.onEvent(type, data));
@@ -130,7 +130,7 @@ class Room {
       mode: cfg.mode === 'tour' ? 'tour' : 'cash',
       levelMin: [3, 5, 7, 10].includes(+cfg.levelMin) ? +cfg.levelMin : 5,
       rebuyMax: [0, 1, 2, 3].includes(+cfg.rebuyMax) ? +cfg.rebuyMax : 2,
-      rebuyUntil: [0, 3, 4, 6].includes(+cfg.rebuyUntil) ? +cfg.rebuyUntil : 4,   // 0 = 마감 없음
+      rebuyUntil: [0, 3, 4, 5].includes(+cfg.rebuyUntil) ? +cfg.rebuyUntil : 4,   // 0 = 마감 없음
     });
     if (this.cfg.mode === 'tour') { this.cfg.stack = Math.max(levelBB(1) * 10, this.cfg.stack); this.cfg.bb = levelBB(1); }
     else this.cfg.bb = Math.max(2, Math.min(Math.floor(this.cfg.stack / 2), Math.round(+cfg.bb) || 100));
