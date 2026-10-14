@@ -1704,7 +1704,7 @@ function headsUpCheck() {
   }
   if (FX.headsHand !== G.handNo && alive.length === 2) {
     FX.headsHand = G.handNo;
-    const names = alive.map((p) => (G.players.indexOf(p) === 0 ? '나' : p.name));
+    const names = alive.map((p) => p.name);   // 내 자리도 닉네임 그대로
     announce('<span class="hu">HEADS-UP</span><small>' + esc(names[0]) + ' vs ' + esc(names[1]) + '</small>', 'drama big', 1800);
     if (alive.indexOf(G.players[0]) >= 0) { try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {} }
   }
