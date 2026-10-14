@@ -769,6 +769,8 @@ header{background:rgba(12,16,15,.92);backdrop-filter:blur(10px)}
   .fld>label{flex-basis:60px;font-size:12px}
   .opt{padding:0 4px;height:34px;font-size:12px}
 }
+/* 폰 좌석 띠: 금액 10만 단위까지 한 줄에 */
+@media (max-width:720px){.seat{width:76px}.seat .act{font-size:10.5px;padding:3px 3px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}.seat .plate .nm{padding:3px 5px 0}.seat .plate .ch{padding:0 5px 4px}}
 /* ═══════════ v1.5 이펙트: 펠트 번쩍임·떠오르는 숫자·내 차례 독·폴드 카드·초읽기 ═══════════ */
 .felt.flash-gold::after{animation:feltGold .7s ease-out}
 .felt.flash-red::after{animation:feltRed .7s ease-out}
@@ -2570,7 +2572,10 @@ function render() {
     }
     d.appendChild(cards);
     const plate = document.createElement('div'); plate.className = 'plate';
-    plate.innerHTML = '<div class="nm">' + avatarHtml(p.name) + esc(p.name) + '</div><div class="ch num">' + fmt(p.stack) + '</div>' + (p.last ? '<div class="act ' + actClass(p) + (FX.acts[idx] !== p.last ? ' pop' : '') + '">' + esc(p.last) + '</div>' : '');
+    // 폰: 액션 띠는 한 글자 + 금액(R 레이즈·C 콜·B 벳·A 올인, 색도 다름). "레이즈 1,200"이 폭에 안 들어가 잘리던 문제
+    let lastTxt = p.last;
+    if (isPhone() && p.last) { const m = String(p.last).match(/^(레이즈|콜|벳|올인)\s*([\d,]+)$/); if (m) lastTxt = ({ 레이즈: 'R', 콜: 'C', 벳: 'B', 올인: 'A' })[m[1]] + ' ' + m[2]; }   // R 1,200 / C 800 / A 20,000
+    plate.innerHTML = '<div class="nm">' + avatarHtml(p.name) + esc(p.name) + '</div><div class="ch num">' + fmt(p.stack) + '</div>' + (p.last ? '<div class="act ' + actClass(p) + (FX.acts[idx] !== p.last ? ' pop' : '') + '">' + esc(lastTxt) + '</div>' : '');
     d.appendChild(plate);
     if (idx === G.btn && !p.out) { const b = document.createElement('div'); b.className = 'dbtn'; b.textContent = 'D'; d.appendChild(b); }
     if (p.away) { const aw = document.createElement('div'); aw.className = 'away'; aw.textContent = p.away === 'bot' ? 'AI 대리' : '자리 비움'; d.appendChild(aw); }
